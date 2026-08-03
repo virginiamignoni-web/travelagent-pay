@@ -86,6 +86,18 @@ function renderPlan(plan) {
         <a href="${protectionZone.mapUrl}" target="_blank" rel="noopener noreferrer">View event center on map →</a>
       </div>`
     : `<div class="protection-zone"><h4>Protection zone unavailable</h4><p>${protectionZone?.reason || "The event location could not be resolved."}</p></div>`;
+  const mobility = plan.mobility;
+  const mobilityCards = mobility?.modes?.length
+    ? `<div class="mobility-results">
+        <div class="mobility-heading"><div><span>MOBILITY PROTECTION</span><h4>${mobility.recommendation}</h4></div><strong>≤ ${mobility.maxCommuteMinutes} min</strong></div>
+        <div class="mobility-grid">${mobility.modes.map((mode) => `<article class="mobility-card ${mode.id === mobility.recommendedMode ? "recommended" : ""}">
+          <div><b>${mode.label}</b>${mode.id === mobility.recommendedMode ? "<em>Recommended</em>" : ""}</div>
+          <strong>${mode.estimatedMinutes} min</strong>
+          <small>EUR ${mode.estimatedTripCostEur.toFixed(2)} trip estimate · ${mode.emissions} emissions · ${mode.withinLimit ? "within limit" : "over limit"}</small>
+        </article>`).join("")}</div>
+        <small>${mobility.basis}. ${mobility.disclaimer}</small>
+      </div>`
+    : "";
   const flightCards = flightSearch?.offers?.length
     ? `<div class="flight-results">
         <h4>Top flight options · ${flightSearch.origin} → ${flightSearch.destination}</h4>
@@ -106,7 +118,7 @@ function renderPlan(plan) {
       <div><b>Budget</b><br>R$ ${plan.budget.totalBrl.toLocaleString()}</div>
       <div><b>Transport</b><br>${plan.transportPlan[0]}</div>
       <div><b>First day</b><br>${plan.itinerary[0].focus}</div>
-    </div>${locationCard}${flightCards}`;
+    </div>${locationCard}${mobilityCards}${flightCards}`;
   planNode.classList.remove("hidden");
 }
 

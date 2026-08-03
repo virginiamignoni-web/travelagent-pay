@@ -10,6 +10,8 @@ The traveler request is centered on the purpose of the trip: origin, event name 
 
 The protected result geocodes the event address, creates a configurable geographic protection zone, returns a bounding box for supplier searches, and exposes the verified center and radius in the interface. The Meridian landmark is cached for demo reliability; other addresses use OpenStreetMap Nominatim and are cached in memory.
 
+The mobility protection layer compares walking, public transport, ride-hailing, and rental car against the traveler-defined commute limit. It estimates time, trip cost, and emissions, then explains its recommended mode. These figures are explicitly labeled as planning estimates until live routing is connected.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists

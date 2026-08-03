@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildPreview, buildPremiumPlan, normalizeDestination } from "../src/trip-engine.js";
 import { buildProtectionZone, haversineKm } from "../src/geo.js";
+import { compareMobility } from "../src/mobility.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -30,6 +31,14 @@ test("builds a geographic protection radius around an event", () => {
   assert.ok(zone.boundingBox.south < convent.latitude);
   assert.ok(zone.boundingBox.east > convent.longitude);
   assert.equal(haversineKm(convent, convent), 0);
+});
+
+test("compares mobility modes against traveler constraints", () => {
+  const result = compareMobility({ radiusKm: 5, maxCommuteMinutes: 30, travelers: 1, days: 5, preferredMode: "public_transport" });
+  assert.equal(result.modes.length, 4);
+  assert.equal(result.recommendedMode, "public_transport");
+  assert.equal(result.modes.find((mode) => mode.id === "public_transport").withinLimit, true);
+  assert.ok(result.modes.find((mode) => mode.id === "rental_car").estimatedTripCostEur > 0);
 });
 
 test("builds an honest preview with a premium offer", () => {

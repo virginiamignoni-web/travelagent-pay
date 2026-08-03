@@ -7,6 +7,7 @@ import { buildPreview, buildPremiumPlan } from "./trip-engine.js";
 import { createPaymentGate } from "./payment.js";
 import { searchFlightOffers } from "./duffel.js";
 import { geocodeEvent } from "./geo.js";
+import { compareMobility } from "./mobility.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -61,6 +62,13 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
     ]);
     plan.flightSearch = flightResult.status === "fulfilled" ? flightResult.value : { available: false, reason: flightResult.reason.message, offers: [] };
     plan.protectionZone = locationResult.status === "fulfilled" ? locationResult.value : { available: false, reason: locationResult.reason.message };
+    plan.mobility = compareMobility({
+      radiusKm: req.body.hotelRadiusKm,
+      maxCommuteMinutes: req.body.maxCommuteMinutes,
+      travelers: req.body.travelers,
+      days: plan.itinerary.length,
+      preferredMode: req.body.transportPreference,
+    });
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());
