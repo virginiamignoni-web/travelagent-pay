@@ -88,6 +88,7 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       input: { ...req.body, baseProtectionScore: plan.decision.protectionScore },
       primaryFlight: plan.decision.primaryFlight,
       backupFlight: plan.decision.backupFlight,
+      flightOffers: plan.flightSearch.offers,
       mobility: plan.mobility,
       completeBudget: plan.completeBudget,
     });

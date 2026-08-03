@@ -21,9 +21,27 @@ function issue({ category, severity, title, evidence, impact, mitigation }) {
 
 const POINTS = { low: 5, medium: 12, high: 22, critical: 35 };
 
-export function assessOperationalRisk({ input = {}, primaryFlight, backupFlight, mobility, completeBudget } = {}) {
+function compareCheapAndDirect(offers = []) {
+  const usable = offers.filter((offer) => Number.isFinite(Number(offer.amount)) && durationHours(offer.duration) !== null);
+  if (usable.length < 2) return null;
+  const cheapest = [...usable].sort((a, b) => a.amount - b.amount)[0];
+  const mostDirect = [...usable].sort((a, b) => a.stops - b.stops || durationHours(a.duration) - durationHours(b.duration))[0];
+  const extraHours = Math.round((durationHours(cheapest.duration) - durationHours(mostDirect.duration)) * 10) / 10;
+  const priceDifference = Math.round((mostDirect.amount - cheapest.amount) * 100) / 100;
+  return {
+    triggered: cheapest.id !== mostDirect.id && extraHours > 3,
+    thresholdHours: 3,
+    cheapest: { airline: cheapest.airline, amount: cheapest.amount, currency: cheapest.currency, stops: cheapest.stops, durationHours: Math.round(durationHours(cheapest.duration) * 10) / 10 },
+    mostDirect: { airline: mostDirect.airline, amount: mostDirect.amount, currency: mostDirect.currency, stops: mostDirect.stops, durationHours: Math.round(durationHours(mostDirect.duration) * 10) / 10 },
+    extraHours,
+    priceDifference,
+  };
+}
+
+export function assessOperationalRisk({ input = {}, primaryFlight, backupFlight, flightOffers = [], mobility, completeBudget } = {}) {
   const risks = [];
   const flightDuration = durationHours(primaryFlight?.duration);
+  const flightComparison = compareCheapAndDirect(flightOffers);
 
   if (!primaryFlight) {
     risks.push(issue({ category: "flight", severity: "high", title: "Flight availability is unverified", evidence: "No Duffel sandbox offer was returned.", impact: "Arrival timing and trip cost cannot be confirmed.", mitigation: "Refresh the search or change dates before confirming the plan." }));
@@ -34,6 +52,21 @@ export function assessOperationalRisk({ input = {}, primaryFlight, backupFlight,
 
     if (flightDuration >= 18) risks.push(issue({ category: "flight", severity: "high", title: "Very long itinerary", evidence: `${flightDuration.toFixed(1)} scheduled hours.`, impact: "Greater fatigue and exposure to schedule disruption.", mitigation: "Compare the backup by elapsed time, not price alone." }));
     else if (flightDuration >= 12) risks.push(issue({ category: "flight", severity: "medium", title: "Long-haul fatigue", evidence: `${flightDuration.toFixed(1)} scheduled hours.`, impact: "Reduced recovery time before the main commitment.", mitigation: "Preserve at least one recovery night before the event." }));
+
+    if (flightComparison?.triggered) {
+      const difference = flightComparison.priceDifference;
+      const priceText = difference >= 0
+        ? `${flightComparison.mostDirect.currency} ${difference.toFixed(2)} more`
+        : `${flightComparison.mostDirect.currency} ${Math.abs(difference).toFixed(2)} less`;
+      risks.push(issue({
+        category: "flight",
+        severity: flightComparison.extraHours >= 6 ? "high" : "medium",
+        title: "Cheap fare costs too much travel time",
+        evidence: `${flightComparison.cheapest.airline} is cheapest but takes ${flightComparison.cheapest.durationHours}h with ${flightComparison.cheapest.stops} stop(s), ${flightComparison.extraHours}h longer than ${flightComparison.mostDirect.airline}.`,
+        impact: "The saving may not justify fatigue, connection exposure, and lost destination time.",
+        mitigation: `Choose ${flightComparison.mostDirect.airline}: ${flightComparison.mostDirect.durationHours}h, ${flightComparison.mostDirect.stops} stop(s), and ${priceText}.`,
+      }));
+    }
   }
 
   const destinationOffset = input.eventUtcOffset || "+00:00";
@@ -72,6 +105,7 @@ export function assessOperationalRisk({ input = {}, primaryFlight, backupFlight,
     riskLevel,
     riskAdjustedProtectionScore,
     arrivalBufferHours,
+    flightComparison,
     summary: `${scoredRisks.length} operational risk${scoredRisks.length === 1 ? "" : "s"} require attention before confirmation.`,
     risks: risks.sort((a, b) => POINTS[b.severity] - POINTS[a.severity]),
     disclaimer: "This is an operational planning assessment based on sandbox and estimated data, not a guarantee of safety, punctuality, supplier performance, or availability.",

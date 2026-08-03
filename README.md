@@ -18,6 +18,8 @@ The complete-budget layer adds flights, tier-based accommodation, food, mobility
 
 The operational-risk layer checks connections, itinerary duration, arrival margin before the main commitment, commute compliance, budget feasibility, and missing live supplier data. Each finding includes evidence, impact, severity, and a mitigation. The Bit Travels protection score is reduced by the modeled operational risk; it remains planning guidance rather than a safety or punctuality guarantee.
 
+The flight trade-off rule compares the cheapest returned offer with the most direct available offer. If the cheap fare adds more than three scheduled hours, the interface warns the traveler and shows the exact time saved, stop difference, and additional price for the more direct option.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists

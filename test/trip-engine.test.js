@@ -118,3 +118,31 @@ test("identifies a healthy arrival margin", () => {
   assert.equal(result.arrivalBufferHours, 48);
   assert.ok(result.risks.some((risk) => risk.title === "Healthy arrival margin"));
 });
+
+test("alerts when the cheapest flight is over three hours longer than the most direct", () => {
+  const offers = [
+    { id: "cheap", airline: "Cheap Connect", amount: 420, currency: "EUR", stops: 2, duration: "PT15H", arrivalAt: "2026-09-16T08:00:00Z" },
+    { id: "direct", airline: "Direct Air", amount: 510, currency: "EUR", stops: 0, duration: "PT9H", arrivalAt: "2026-09-16T02:00:00Z" },
+  ];
+  const result = assessOperationalRisk({
+    input: { eventStart: "2026-09-18T09:00:00Z", baseProtectionScore: 90 },
+    primaryFlight: offers[1],
+    backupFlight: offers[0],
+    flightOffers: offers,
+    mobility: compareMobility({ radiusKm: 5, maxCommuteMinutes: 30 }),
+    completeBudget: { status: "fits", requested: { differenceBrl: 1000 } },
+  });
+  assert.equal(result.flightComparison.triggered, true);
+  assert.equal(result.flightComparison.extraHours, 6);
+  assert.equal(result.flightComparison.priceDifference, 90);
+  assert.ok(result.risks.some((risk) => risk.title === "Cheap fare costs too much travel time"));
+});
+
+test("does not alert when the cheaper flight adds no more than three hours", () => {
+  const offers = [
+    { id: "cheap", airline: "Cheap Air", amount: 420, currency: "EUR", stops: 1, duration: "PT11H" },
+    { id: "direct", airline: "Direct Air", amount: 510, currency: "EUR", stops: 0, duration: "PT9H" },
+  ];
+  const result = assessOperationalRisk({ input: {}, primaryFlight: offers[1], flightOffers: offers });
+  assert.equal(result.flightComparison.triggered, false);
+});
