@@ -9,6 +9,7 @@ import { searchFlightOffers } from "./duffel.js";
 import { geocodeEvent } from "./geo.js";
 import { compareMobility } from "./mobility.js";
 import { buildDecisionBrief } from "./decision-engine.js";
+import { buildCompleteBudget } from "./budget-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -76,6 +77,11 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       protectionZone: plan.protectionZone,
       tripContext: plan.tripContext,
       budget: req.body.budget,
+    });
+    plan.completeBudget = buildCompleteBudget({
+      input: { ...req.body, days: plan.itinerary.length },
+      primaryFlight: plan.decision.primaryFlight,
+      mobility: plan.mobility,
     });
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));

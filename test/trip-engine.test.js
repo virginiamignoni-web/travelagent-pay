@@ -4,6 +4,7 @@ import { buildPreview, buildPremiumPlan, normalizeDestination } from "../src/tri
 import { buildProtectionZone, haversineKm } from "../src/geo.js";
 import { compareMobility } from "../src/mobility.js";
 import { buildDecisionBrief, rankFlightOffers } from "../src/decision-engine.js";
+import { buildCompleteBudget } from "../src/budget-engine.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -68,4 +69,27 @@ test("allocates the entire budget and returns one itinerary entry per day", () =
   const allocated = Object.entries(result.budget).filter(([key]) => key !== "totalBrl").reduce((sum, [, value]) => sum + value, 0);
   assert.equal(allocated, 1800);
   assert.equal(result.itinerary.length, 3);
+});
+
+test("builds a complete budget and warns with a fitting tier adjustment", () => {
+  const mobility = compareMobility({ radiusKm: 5, maxCommuteMinutes: 30, travelers: 1, days: 5, preferredMode: "rental_car" });
+  const result = buildCompleteBudget({
+    input: { budget: 8000, travelers: 1, days: 5, travelStyle: "Comfort", transportPreference: "rental_car" },
+    primaryFlight: { airline: "Test Air", amount: 500, currency: "USD" },
+    mobility,
+  });
+  assert.equal(result.status, "adjustment_available");
+  assert.ok(result.alerts.some((alert) => alert.code === "over_budget"));
+  assert.ok(result.recommended.totalBrl <= 8000);
+});
+
+test("reports when no tier and transport combination fits", () => {
+  const mobility = compareMobility({ radiusKm: 5, maxCommuteMinutes: 15, travelers: 2, days: 8, preferredMode: "ride_hailing" });
+  const result = buildCompleteBudget({
+    input: { budget: 1000, travelers: 2, days: 8, travelStyle: "Comfort", transportPreference: "ride_hailing" },
+    primaryFlight: { airline: "Test Air", amount: 1000, currency: "USD" },
+    mobility,
+  });
+  assert.equal(result.status, "not_feasible");
+  assert.equal(result.recommended, null);
 });

@@ -76,6 +76,18 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function renderPlan(plan) {
   const flightSearch = plan.flightSearch;
+  const completeBudget = plan.completeBudget;
+  const budgetCard = completeBudget?.requested
+    ? `<section class="budget-card ${completeBudget.status}">
+        <div class="budget-heading"><div><span>COMPLETE TRIP BUDGET</span><h3>${completeBudget.status === "fits" ? "Plan fits the client limit" : completeBudget.status === "adjustment_available" ? "Adjustment available" : "Plan is not currently feasible"}</h3></div><strong>R$ ${completeBudget.requested.totalBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></div>
+        <div class="budget-meter"><i style="width:${Math.min(100, completeBudget.requested.totalBrl / completeBudget.requested.budgetBrl * 100)}%"></i></div>
+        <p>Client limit: R$ ${completeBudget.requested.budgetBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })} · ${completeBudget.requested.tierLabel} · ${completeBudget.requested.mobilityLabel}</p>
+        <div class="budget-grid">${Object.entries(completeBudget.requested.breakdown).map(([key, value]) => `<div><span>${key.replace("Brl", "").replace(/([A-Z])/g, " $1")}</span><b>R$ ${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</b></div>`).join("")}</div>
+        <div class="budget-alerts">${completeBudget.alerts.map((alert) => `<article class="${alert.level}"><b>${alert.message}</b><span>${alert.action}</span></article>`).join("")}</div>
+        ${completeBudget.recommended && completeBudget.status !== "fits" ? `<div class="fit-action"><b>Recommended fit</b><span>${completeBudget.recommended.tierLabel} + ${completeBudget.recommended.mobilityLabel} · R$ ${completeBudget.recommended.totalBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>` : ""}
+        <small>${completeBudget.assumptions.hotel}. ${completeBudget.assumptions.reserve}. ${completeBudget.assumptions.fx}.</small>
+      </section>`
+    : "";
   const decision = plan.decision;
   const decisionCard = decision
     ? `<section class="decision-card">
@@ -126,7 +138,7 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    ${decisionCard}<h3>${plan.headline}</h3>
+    ${decisionCard}${budgetCard}<h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>

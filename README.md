@@ -14,6 +14,8 @@ The mobility protection layer compares walking, public transport, ride-hailing, 
 
 The Bit Travels decision layer combines flight quality, mobility fit, event location, and budget fit into a transparent prototype protection score. It recommends a primary flight, retains the next suitable offer as Plan B, and explains the safeguards used. The score supports trip planning; it is not a safety guarantee. Hotel comparison remains visibly pending while Duffel Stays access is under review.
 
+The complete-budget layer adds flights, tier-based accommodation, food, mobility, local activities, and a 10% emergency reserve. When the requested plan exceeds the client's limit or commute rule, it raises a visible alert and tests alternative tiers and transport modes. Hotel and FX values remain labeled planning assumptions until live supplier and exchange-rate data are connected.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists
