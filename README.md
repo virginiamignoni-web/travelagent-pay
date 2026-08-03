@@ -6,6 +6,8 @@ TravelAgent Pay is an autonomous travel-planning demo that purchases premium iti
 
 After payment, the prototype can create a real flight offer request in **Duffel Developer Test mode**, compare the returned sandbox offers, and display the five lowest prices. No live booking is created.
 
+The traveler request is centered on the purpose of the trip: origin, event name and address, travel dates, travelers, hotel radius, maximum commute, transport preference, budget, and accommodation preferences. The default hackathon scenario uses Stellar Meridian at Convento do Beato in Lisbon.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists

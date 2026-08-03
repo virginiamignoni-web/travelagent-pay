@@ -14,6 +14,14 @@ test("keeps an unsupported destination instead of silently replacing it", () => 
   assert.equal(result.city, "Lisboa");
 });
 
+test("preserves event-centered protection constraints", () => {
+  const result = buildPremiumPlan({ destination: "Lisboa", eventName: "Stellar Meridian", eventAddress: "Convento do Beato", hotelRadiusKm: 5, maxCommuteMinutes: 30, transportPreference: "public_transport", travelers: 2 });
+  assert.equal(result.tripContext.eventName, "Stellar Meridian");
+  assert.equal(result.tripContext.hotelRadiusKm, 5);
+  assert.equal(result.tripContext.maxCommuteMinutes, 30);
+  assert.equal(result.tripContext.travelers, 2);
+});
+
 test("builds an honest preview with a premium offer", () => {
   const result = buildPreview({ destination: "São Paulo", days: 4, budget: 2500 });
   assert.equal(result.city, "São Paulo");

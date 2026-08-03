@@ -28,7 +28,12 @@ export async function searchFlightOffers(input = {}, token = process.env.DUFFEL_
   const origin = requireIata(input.origin, "Origin");
   const destination = requireIata(input.destinationAirport, "Destination airport");
   const departureDate = String(input.departureDate || "");
+  const returnDate = String(input.returnDate || "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(departureDate)) throw new Error("Departure date must use YYYY-MM-DD");
+  if (returnDate && !/^\d{4}-\d{2}-\d{2}$/.test(returnDate)) throw new Error("Return date must use YYYY-MM-DD");
+  const travelerCount = Math.max(1, Math.min(9, Number(input.travelers) || 1));
+  const slices = [{ origin, destination, departure_date: departureDate }];
+  if (returnDate) slices.push({ origin: destination, destination: origin, departure_date: returnDate });
 
   const response = await fetch(DUFFEL_URL, {
     method: "POST",
@@ -39,8 +44,8 @@ export async function searchFlightOffers(input = {}, token = process.env.DUFFEL_
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ data: {
-      slices: [{ origin, destination, departure_date: departureDate }],
-      passengers: [{ type: "adult" }],
+      slices,
+      passengers: Array.from({ length: travelerCount }, () => ({ type: "adult" })),
       cabin_class: "economy",
       return_offers: true,
     } }),
@@ -58,6 +63,8 @@ export async function searchFlightOffers(input = {}, token = process.env.DUFFEL_
     origin,
     destination,
     departureDate,
+    returnDate: returnDate || null,
+    travelers: travelerCount,
     offers,
     disclaimer: "Sandbox offers are demonstrative and may not reflect live commercial schedules or prices.",
   };

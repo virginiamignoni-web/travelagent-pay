@@ -29,18 +29,29 @@
       <section class="workspace">
         <form id="trip-form" class="planner-card">
           <div class="card-label">01 — YOUR TRIP</div>
-          <label>Destination<input name="destination" value="Lisboa" required /></label>
+          <label>Departure city<input name="originCity" value="São Paulo" required /></label>
           <div class="split">
             <label>Origin airport<input name="origin" value="GRU" minlength="3" maxlength="3" required /></label>
             <label>Destination airport<input name="destinationAirport" value="LIS" minlength="3" maxlength="3" required /></label>
           </div>
-          <label>Departure date<input name="departureDate" type="date" value="2026-09-15" required /></label>
+          <label>Destination city<input name="destination" value="Lisboa" required /></label>
+          <label>Main event or commitment<input name="eventName" value="Stellar Meridian" required /></label>
+          <label>Event address<input name="eventAddress" value="Convento do Beato, Alameda do Beato, 1950-042 Lisboa, Portugal" required /></label>
           <div class="split">
-            <label>Days<input name="days" type="number" min="1" max="10" value="5" required /></label>
+            <label>Departure date<input name="departureDate" type="date" value="2026-09-15" required /></label>
+            <label>Return date<input name="returnDate" type="date" value="2026-09-20" required /></label>
+          </div>
+          <div class="split">
+            <label>Travelers<input name="travelers" type="number" min="1" max="9" value="1" required /></label>
             <label>Budget (BRL)<input name="budget" type="number" min="300" value="12000" required /></label>
           </div>
-          <label>Purpose<input name="purpose" value="Stellar Summit and local exploration" required /></label>
+          <div class="split">
+            <label>Hotel radius<select name="hotelRadiusKm"><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option><option value="15">15 km</option></select></label>
+            <label>Maximum commute<select name="maxCommuteMinutes"><option value="15">15 minutes</option><option value="30" selected>30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></label>
+          </div>
+          <label>Preferred transport<select name="transportPreference"><option value="public_transport" selected>Public transport</option><option value="walking">Walking</option><option value="ride_hailing">Taxi or ride app</option><option value="rental_car">Rental car</option><option value="compare_all">Compare all</option></select></label>
           <label>Travel style<select name="travelStyle"><option>Balanced</option><option>Budget-conscious</option><option>Comfort</option></select></label>
+          <label>Hotel preferences<textarea name="hotelPreferences" rows="3" placeholder="Breakfast, cancellation, accessibility, parking…">Breakfast included and flexible cancellation</textarea></label>
           <button type="submit">Launch travel agent <span>→</span></button>
           <p class="fine-print">Demo price: 0.01 test USDC per premium itinerary.</p>
         </form>

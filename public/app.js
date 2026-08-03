@@ -103,8 +103,14 @@ function renderPlan(plan) {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   tripInput = Object.fromEntries(new FormData(form));
-  tripInput.days = Number(tripInput.days);
+  const departure = new Date(`${tripInput.departureDate}T00:00:00`);
+  const returning = new Date(`${tripInput.returnDate}T00:00:00`);
+  tripInput.days = Math.max(1, Math.round((returning - departure) / 86400000));
+  tripInput.purpose = tripInput.eventName;
+  tripInput.travelers = Number(tripInput.travelers);
   tripInput.budget = Number(tripInput.budget);
+  tripInput.hotelRadiusKm = Number(tripInput.hotelRadiusKm);
+  tripInput.maxCommuteMinutes = Number(tripInput.maxCommuteMinutes);
   steps.innerHTML = "";
   planNode.classList.add("hidden");
   payButton.classList.add("hidden");
@@ -112,12 +118,14 @@ form.addEventListener("submit", async (event) => {
   run.classList.remove("hidden");
   agentCity.textContent = `Planning ${tripInput.destination}`;
 
-  addStep("Trip request understood");
+  addStep(`Trip request understood · ${tripInput.eventName}`);
   if (connectedWallet) addStep(`Traveler wallet connected · ${shortAddress(connectedWallet.address)}`);
   await wait(350);
   const previewResponse = await fetch("/api/trip-preview", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(tripInput) });
   const preview = await previewResponse.json();
   addStep(`Itinerary strategy created for ${preview.days} days`);
+  addStep(`Event protection zone set to ${tripInput.hotelRadiusKm} km`);
+  addStep(`${tripInput.transportPreference.replaceAll("_", " ")} · maximum ${tripInput.maxCommuteMinutes} minutes`);
   await wait(350);
   addStep("Premium travel intelligence selected");
   await wait(350);

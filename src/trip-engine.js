@@ -65,6 +65,13 @@ export function buildPreview(input = {}) {
     budget,
     purpose: input.purpose || "conference and local exploration",
     travelStyle: input.travelStyle || "balanced",
+    event: {
+      name: input.eventName || input.purpose || "Primary commitment",
+      address: input.eventAddress || null,
+      hotelRadiusKm: Math.max(1, Number(input.hotelRadiusKm) || 5),
+      maxCommuteMinutes: Math.max(5, Number(input.maxCommuteMinutes) || 30),
+      transportPreference: input.transportPreference || "compare_all",
+    },
     summary: `${days} days in ${profile.city}, optimized for ${input.purpose || "conference attendance"}.`,
     budgetSignal: budget >= estimatedEssentials ? "comfortable" : "tight",
     premiumOffer: {
@@ -99,6 +106,16 @@ export function buildPremiumPlan(input = {}) {
   return {
     generatedAt: new Date().toISOString(),
     destination: profile.city,
+    tripContext: {
+      originCity: input.originCity || null,
+      eventName: input.eventName || input.purpose || "Primary commitment",
+      eventAddress: input.eventAddress || null,
+      travelers: Math.max(1, Number(input.travelers) || 1),
+      hotelRadiusKm: Math.max(1, Number(input.hotelRadiusKm) || 5),
+      maxCommuteMinutes: Math.max(5, Number(input.maxCommuteMinutes) || 30),
+      transportPreference: input.transportPreference || "compare_all",
+      hotelPreferences: input.hotelPreferences || null,
+    },
     headline: `A ${days}-day plan that protects your time and budget`,
     recommendedAreas: profile.districts,
     transportPlan: profile.transit,
