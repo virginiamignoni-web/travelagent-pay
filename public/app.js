@@ -75,6 +75,19 @@ function addStep(text, state = "done") {
 function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function renderPlan(plan) {
+  const flightSearch = plan.flightSearch;
+  const flightCards = flightSearch?.offers?.length
+    ? `<div class="flight-results">
+        <h4>Top flight options · ${flightSearch.origin} → ${flightSearch.destination}</h4>
+        <p>${flightSearch.searched} sandbox offers compared. Showing the five lowest prices.</p>
+        ${flightSearch.offers.map((offer) => `<article class="flight-card">
+          <div><b>${offer.airline}</b><span>${offer.stops === 0 ? "Direct" : `${offer.stops} stop${offer.stops > 1 ? "s" : ""}`}</span></div>
+          <strong>${offer.currency} ${offer.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+          <small>${new Date(offer.departureAt).toLocaleString()} → ${new Date(offer.arrivalAt).toLocaleString()}</small>
+        </article>`).join("")}
+        <small>${flightSearch.disclaimer}</small>
+      </div>`
+    : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
     <h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
@@ -83,7 +96,7 @@ function renderPlan(plan) {
       <div><b>Budget</b><br>R$ ${plan.budget.totalBrl.toLocaleString()}</div>
       <div><b>Transport</b><br>${plan.transportPlan[0]}</div>
       <div><b>First day</b><br>${plan.itinerary[0].focus}</div>
-    </div>`;
+    </div>${flightCards}`;
   planNode.classList.remove("hidden");
 }
 

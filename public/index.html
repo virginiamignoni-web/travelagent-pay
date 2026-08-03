@@ -29,10 +29,15 @@
       <section class="workspace">
         <form id="trip-form" class="planner-card">
           <div class="card-label">01 — YOUR TRIP</div>
-          <label>Destination<input name="destination" value="São Paulo" required /></label>
+          <label>Destination<input name="destination" value="Lisboa" required /></label>
           <div class="split">
-            <label>Days<input name="days" type="number" min="1" max="10" value="4" required /></label>
-            <label>Budget (BRL)<input name="budget" type="number" min="300" value="2500" required /></label>
+            <label>Origin airport<input name="origin" value="GRU" minlength="3" maxlength="3" required /></label>
+            <label>Destination airport<input name="destinationAirport" value="LIS" minlength="3" maxlength="3" required /></label>
+          </div>
+          <label>Departure date<input name="departureDate" type="date" value="2026-09-15" required /></label>
+          <div class="split">
+            <label>Days<input name="days" type="number" min="1" max="10" value="5" required /></label>
+            <label>Budget (BRL)<input name="budget" type="number" min="300" value="12000" required /></label>
           </div>
           <label>Purpose<input name="purpose" value="Stellar Summit and local exploration" required /></label>
           <label>Travel style<select name="travelStyle"><option>Balanced</option><option>Budget-conscious</option><option>Comfort</option></select></label>

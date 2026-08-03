@@ -6,6 +6,12 @@ test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
   assert.equal(normalizeDestination("Rio"), "rio-de-janeiro");
   assert.equal(normalizeDestination("Buenos Aires"), "buenos-aires");
+  assert.equal(normalizeDestination("Lisboa"), "custom");
+});
+
+test("keeps an unsupported destination instead of silently replacing it", () => {
+  const result = buildPreview({ destination: "Lisboa", destinationAirport: "LIS", days: 5, budget: 12000 });
+  assert.equal(result.city, "Lisboa");
 });
 
 test("builds an honest preview with a premium offer", () => {

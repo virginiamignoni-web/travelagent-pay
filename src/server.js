@@ -1,10 +1,15 @@
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 import { buildPreview, buildPremiumPlan } from "./trip-engine.js";
 import { createPaymentGate } from "./payment.js";
+import { searchFlightOffers } from "./duffel.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const localEnv = join(here, "..", ".env");
+if (existsSync(localEnv)) loadEnvFile(localEnv);
 const port = Number(process.env.PORT || 3001);
 const paymentMode = process.env.PAYMENT_MODE || "local";
 const gate = createPaymentGate({
@@ -21,7 +26,7 @@ app.get("/vendor/freighter-api.js", (_req, res) => {
 app.use(express.static(join(here, "..", "public")));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, project: "TravelAgent Pay", paymentMode, network: "stellar:testnet" });
+  res.json({ ok: true, project: "TravelAgent Pay", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN) });
 });
 
 app.post("/api/trip-preview", (req, res) => {
@@ -48,7 +53,13 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       return res.status(402).send(body);
     }
 
-    const response = result.withReceipt(Response.json(buildPremiumPlan(req.body)));
+    const plan = buildPremiumPlan(req.body);
+    try {
+      plan.flightSearch = await searchFlightOffers(req.body);
+    } catch (error) {
+      plan.flightSearch = { available: false, reason: error.message, offers: [] };
+    }
+    const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());
   } catch (error) {

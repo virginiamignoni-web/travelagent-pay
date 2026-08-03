@@ -30,14 +30,29 @@ const cityProfiles = {
 
 export function normalizeDestination(value = "") {
   const normalized = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (normalized.includes("sao paulo")) return "sao-paulo";
   if (normalized.includes("rio")) return "rio-de-janeiro";
   if (normalized.includes("buenos")) return "buenos-aires";
-  return "sao-paulo";
+  return "custom";
+}
+
+function getProfile(input = {}) {
+  const cityKey = normalizeDestination(input.destination);
+  if (cityProfiles[cityKey]) return { cityKey, profile: cityProfiles[cityKey] };
+  const city = String(input.destination || "Your destination").trim();
+  return { cityKey, profile: {
+    city,
+    arrival: `${input.destinationAirport || "Destination"} airport`,
+    districts: ["central district", "well-connected neighborhood", "area near the main purpose of the trip"],
+    transit: ["Compare airport transfer and public transport after arrival", "Cluster activities by neighborhood", "Keep a time buffer before the return flight"],
+    highlights: ["historic center", "local food district", "major cultural attraction", "neighborhood exploration"],
+    eventTip: "Validate live opening hours, local conditions, and transfer times before confirming the itinerary.",
+    dailyBaseBrl: 420,
+  } };
 }
 
 export function buildPreview(input = {}) {
-  const cityKey = normalizeDestination(input.destination);
-  const profile = cityProfiles[cityKey];
+  const { cityKey, profile } = getProfile(input);
   const days = Math.max(1, Math.min(10, Number(input.days) || 4));
   const budget = Math.max(300, Number(input.budget) || 2500);
   const estimatedEssentials = profile.dailyBaseBrl * days;
@@ -62,8 +77,7 @@ export function buildPreview(input = {}) {
 }
 
 export function buildPremiumPlan(input = {}) {
-  const cityKey = normalizeDestination(input.destination);
-  const profile = cityProfiles[cityKey];
+  const { profile } = getProfile(input);
   const days = Math.max(1, Math.min(10, Number(input.days) || 4));
   const budget = Math.max(300, Number(input.budget) || 2500);
   const accommodation = Math.round(budget * 0.45);

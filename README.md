@@ -4,6 +4,8 @@ TravelAgent Pay is an autonomous travel-planning demo that purchases premium iti
 
 `request → HTTP 402 → USDC payment → retry → protected itinerary`
 
+After payment, the prototype can create a real flight offer request in **Duffel Developer Test mode**, compare the returned sandbox offers, and display the five lowest prices. No live booking is created.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists
@@ -34,6 +36,14 @@ npm start
 ```
 
 Open `http://localhost:3001`.
+
+To enable flight search, create a Duffel Developer Test token with read/write scope and add it only to the ignored local `.env` file:
+
+```env
+DUFFEL_ACCESS_TOKEN=duffel_test_...
+```
+
+The read/write scope is required because Duffel models a flight search as creation of an offer-request resource. Keep the account in Test mode.
 
 ## Real Stellar Testnet flow
 
@@ -72,6 +82,7 @@ Traveler form
 - Local rehearsal payment mode
 - Real MPP Charge configuration for Stellar Testnet
 - Deterministic demo dataset for São Paulo, Rio de Janeiro, and Buenos Aires
+- Live sandbox flight-offer search through Duffel Developer Test mode
 - Unit tests for planning and budget logic
 
 ## Hackathon positioning
