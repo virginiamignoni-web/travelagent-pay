@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildPreview, buildPremiumPlan, normalizeDestination } from "../src/trip-engine.js";
 import { buildProtectionZone, haversineKm } from "../src/geo.js";
 import { compareMobility } from "../src/mobility.js";
+import { buildDecisionBrief, rankFlightOffers } from "../src/decision-engine.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -39,6 +40,20 @@ test("compares mobility modes against traveler constraints", () => {
   assert.equal(result.recommendedMode, "public_transport");
   assert.equal(result.modes.find((mode) => mode.id === "public_transport").withinLimit, true);
   assert.ok(result.modes.find((mode) => mode.id === "rental_car").estimatedTripCostEur > 0);
+});
+
+test("ranks flights and retains a backup option", () => {
+  const offers = [
+    { id: "one", airline: "Direct Air", amount: 300, currency: "USD", stops: 0, duration: "PT10H" },
+    { id: "two", airline: "Budget Connect", amount: 250, currency: "USD", stops: 2, duration: "PT16H" },
+  ];
+  const ranked = rankFlightOffers(offers);
+  assert.equal(ranked[0].airline, "Direct Air");
+  const mobility = compareMobility({ radiusKm: 5, maxCommuteMinutes: 30, preferredMode: "public_transport" });
+  const decision = buildDecisionBrief({ flightSearch: { offers }, mobility, protectionZone: { center: { name: "Convento do Beato" }, radiusKm: 5 }, tripContext: { hotelRadiusKm: 5, maxCommuteMinutes: 30 }, budget: 12000 });
+  assert.equal(decision.primaryFlight.airline, "Direct Air");
+  assert.equal(decision.backupFlight.airline, "Budget Connect");
+  assert.ok(decision.protectionScore > 0);
 });
 
 test("builds an honest preview with a premium offer", () => {

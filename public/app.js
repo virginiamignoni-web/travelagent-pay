@@ -76,6 +76,21 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function renderPlan(plan) {
   const flightSearch = plan.flightSearch;
+  const decision = plan.decision;
+  const decisionCard = decision
+    ? `<section class="decision-card">
+        <div class="score-ring"><strong>${decision.protectionScore}</strong><span>/100</span></div>
+        <div class="decision-copy"><span>BIT TRAVELS PROTECTION SCORE</span><h3>${decision.headline}</h3><p>${decision.confidence}</p></div>
+        <div class="decision-details">
+          <div><b>Primary flight</b><br>${decision.primaryFlight ? `${decision.primaryFlight.airline} · ${decision.primaryFlight.currency} ${decision.primaryFlight.amount.toFixed(2)} · score ${decision.primaryFlight.protectionScore}` : "Unavailable"}</div>
+          <div><b>Plan B</b><br>${decision.backupFlight ? `${decision.backupFlight.airline} · ${decision.backupFlight.currency} ${decision.backupFlight.amount.toFixed(2)}` : "Pending"}</div>
+          <div><b>Hotel layer</b><br>${decision.hotelLayer}</div>
+          <div><b>Event center</b><br>${decision.eventCenter}</div>
+        </div>
+        <ul>${decision.safeguards.map((item) => `<li>${item}</li>`).join("")}</ul>
+        <small>${decision.disclaimer}</small>
+      </section>`
+    : "";
   const protectionZone = plan.protectionZone;
   const locationCard = protectionZone?.center
     ? `<div class="protection-zone">
@@ -111,7 +126,7 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    <h3>${plan.headline}</h3>
+    ${decisionCard}<h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>

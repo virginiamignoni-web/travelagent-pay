@@ -8,6 +8,7 @@ import { createPaymentGate } from "./payment.js";
 import { searchFlightOffers } from "./duffel.js";
 import { geocodeEvent } from "./geo.js";
 import { compareMobility } from "./mobility.js";
+import { buildDecisionBrief } from "./decision-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -68,6 +69,13 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       travelers: req.body.travelers,
       days: plan.itinerary.length,
       preferredMode: req.body.transportPreference,
+    });
+    plan.decision = buildDecisionBrief({
+      flightSearch: plan.flightSearch,
+      mobility: plan.mobility,
+      protectionZone: plan.protectionZone,
+      tripContext: plan.tripContext,
+      budget: req.body.budget,
     });
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
