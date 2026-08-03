@@ -76,6 +76,16 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function renderPlan(plan) {
   const flightSearch = plan.flightSearch;
+  const protectionZone = plan.protectionZone;
+  const locationCard = protectionZone?.center
+    ? `<div class="protection-zone">
+        <div><span>BIT TRAVELS PROTECTION ZONE</span><h4>${protectionZone.center.name}</h4></div>
+        <strong>${protectionZone.radiusKm} km radius</strong>
+        <p>${protectionZone.center.displayName}</p>
+        <small>${protectionZone.rule} Coordinates ${protectionZone.center.latitude.toFixed(5)}, ${protectionZone.center.longitude.toFixed(5)} · ${protectionZone.center.source}</small>
+        <a href="${protectionZone.mapUrl}" target="_blank" rel="noopener noreferrer">View event center on map →</a>
+      </div>`
+    : `<div class="protection-zone"><h4>Protection zone unavailable</h4><p>${protectionZone?.reason || "The event location could not be resolved."}</p></div>`;
   const flightCards = flightSearch?.offers?.length
     ? `<div class="flight-results">
         <h4>Top flight options · ${flightSearch.origin} → ${flightSearch.destination}</h4>
@@ -96,7 +106,7 @@ function renderPlan(plan) {
       <div><b>Budget</b><br>R$ ${plan.budget.totalBrl.toLocaleString()}</div>
       <div><b>Transport</b><br>${plan.transportPlan[0]}</div>
       <div><b>First day</b><br>${plan.itinerary[0].focus}</div>
-    </div>${flightCards}`;
+    </div>${locationCard}${flightCards}`;
   planNode.classList.remove("hidden");
 }
 

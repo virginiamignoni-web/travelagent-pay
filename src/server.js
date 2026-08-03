@@ -6,6 +6,7 @@ import { loadEnvFile } from "node:process";
 import { buildPreview, buildPremiumPlan } from "./trip-engine.js";
 import { createPaymentGate } from "./payment.js";
 import { searchFlightOffers } from "./duffel.js";
+import { geocodeEvent } from "./geo.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -54,11 +55,12 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
     }
 
     const plan = buildPremiumPlan(req.body);
-    try {
-      plan.flightSearch = await searchFlightOffers(req.body);
-    } catch (error) {
-      plan.flightSearch = { available: false, reason: error.message, offers: [] };
-    }
+    const [flightResult, locationResult] = await Promise.allSettled([
+      searchFlightOffers(req.body),
+      geocodeEvent(req.body.eventAddress, req.body.hotelRadiusKm),
+    ]);
+    plan.flightSearch = flightResult.status === "fulfilled" ? flightResult.value : { available: false, reason: flightResult.reason.message, offers: [] };
+    plan.protectionZone = locationResult.status === "fulfilled" ? locationResult.value : { available: false, reason: locationResult.reason.message };
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildPreview, buildPremiumPlan, normalizeDestination } from "../src/trip-engine.js";
+import { buildProtectionZone, haversineKm } from "../src/geo.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -20,6 +21,15 @@ test("preserves event-centered protection constraints", () => {
   assert.equal(result.tripContext.hotelRadiusKm, 5);
   assert.equal(result.tripContext.maxCommuteMinutes, 30);
   assert.equal(result.tripContext.travelers, 2);
+});
+
+test("builds a geographic protection radius around an event", () => {
+  const convent = { name: "Convento do Beato", latitude: 38.7349951, longitude: -9.1059398 };
+  const zone = buildProtectionZone(convent, 5);
+  assert.equal(zone.radiusMeters, 5000);
+  assert.ok(zone.boundingBox.south < convent.latitude);
+  assert.ok(zone.boundingBox.east > convent.longitude);
+  assert.equal(haversineKm(convent, convent), 0);
 });
 
 test("builds an honest preview with a premium offer", () => {
