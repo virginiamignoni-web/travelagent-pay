@@ -16,6 +16,8 @@ The Bit Travels decision layer combines flight quality, mobility fit, event loca
 
 The complete-budget layer adds flights, tier-based accommodation, food, mobility, local activities, and a 10% emergency reserve. When the requested plan exceeds the client's limit or commute rule, it raises a visible alert and tests alternative tiers and transport modes. Hotel and FX values remain labeled planning assumptions until live supplier and exchange-rate data are connected.
 
+The operational-risk layer checks connections, itinerary duration, arrival margin before the main commitment, commute compliance, budget feasibility, and missing live supplier data. Each finding includes evidence, impact, severity, and a mitigation. The Bit Travels protection score is reduced by the modeled operational risk; it remains planning guidance rather than a safety or punctuality guarantee.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists

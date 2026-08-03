@@ -10,6 +10,7 @@ import { geocodeEvent } from "./geo.js";
 import { compareMobility } from "./mobility.js";
 import { buildDecisionBrief } from "./decision-engine.js";
 import { buildCompleteBudget } from "./budget-engine.js";
+import { assessOperationalRisk } from "./risk-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -83,6 +84,15 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       primaryFlight: plan.decision.primaryFlight,
       mobility: plan.mobility,
     });
+    plan.riskAssessment = assessOperationalRisk({
+      input: { ...req.body, baseProtectionScore: plan.decision.protectionScore },
+      primaryFlight: plan.decision.primaryFlight,
+      backupFlight: plan.decision.backupFlight,
+      mobility: plan.mobility,
+      completeBudget: plan.completeBudget,
+    });
+    plan.decision.baseProtectionScore = plan.decision.protectionScore;
+    plan.decision.protectionScore = plan.riskAssessment.riskAdjustedProtectionScore;
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());

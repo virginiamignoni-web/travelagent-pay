@@ -38,6 +38,10 @@
           <label>Main event or commitment<input name="eventName" value="Stellar Meridian" required /></label>
           <label>Event address<input name="eventAddress" value="Convento do Beato, Alameda do Beato, 1950-042 Lisboa, Portugal" required /></label>
           <div class="split">
+            <label>Main commitment date and time<input name="eventStart" type="datetime-local" value="2026-09-17T09:00" required /></label>
+            <label>Event UTC offset<select name="eventUtcOffset"><option>-03:00</option><option>+00:00</option><option selected>+01:00</option><option>+02:00</option></select></label>
+          </div>
+          <div class="split">
             <label>Departure date<input name="departureDate" type="date" value="2026-09-15" required /></label>
             <label>Return date<input name="returnDate" type="date" value="2026-09-20" required /></label>
           </div>

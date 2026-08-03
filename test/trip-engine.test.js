@@ -5,6 +5,7 @@ import { buildProtectionZone, haversineKm } from "../src/geo.js";
 import { compareMobility } from "../src/mobility.js";
 import { buildDecisionBrief, rankFlightOffers } from "../src/decision-engine.js";
 import { buildCompleteBudget } from "../src/budget-engine.js";
+import { assessOperationalRisk } from "../src/risk-engine.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -92,4 +93,28 @@ test("reports when no tier and transport combination fits", () => {
   });
   assert.equal(result.status, "not_feasible");
   assert.equal(result.recommended, null);
+});
+
+test("raises a critical timing risk when arrival is too close to the event", () => {
+  const result = assessOperationalRisk({
+    input: { eventStart: "2026-09-17T09:00:00Z", baseProtectionScore: 90, transportPreference: "public_transport" },
+    primaryFlight: { airline: "Test Air", stops: 1, duration: "PT12H", arrivalAt: "2026-09-17T03:00:00Z" },
+    backupFlight: { airline: "Backup Air", stops: 0 },
+    mobility: compareMobility({ radiusKm: 5, maxCommuteMinutes: 30, preferredMode: "public_transport" }),
+    completeBudget: { status: "fits", requested: { differenceBrl: 1000 } },
+  });
+  assert.equal(result.riskLevel, "critical");
+  assert.ok(result.risks.some((risk) => risk.severity === "critical" && risk.category === "timing"));
+  assert.ok(result.riskAdjustedProtectionScore < 90);
+});
+
+test("identifies a healthy arrival margin", () => {
+  const result = assessOperationalRisk({
+    input: { eventStart: "2026-09-18T12:00:00Z", baseProtectionScore: 90 },
+    primaryFlight: { airline: "Test Air", stops: 0, duration: "PT10H", arrivalAt: "2026-09-16T12:00:00Z" },
+    mobility: compareMobility({ radiusKm: 5, maxCommuteMinutes: 30 }),
+    completeBudget: { status: "fits", requested: { differenceBrl: 1000 } },
+  });
+  assert.equal(result.arrivalBufferHours, 48);
+  assert.ok(result.risks.some((risk) => risk.title === "Healthy arrival margin"));
 });

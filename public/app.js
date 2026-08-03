@@ -76,6 +76,14 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function renderPlan(plan) {
   const flightSearch = plan.flightSearch;
+  const risk = plan.riskAssessment;
+  const riskCard = risk
+    ? `<section class="risk-card ${risk.riskLevel}">
+        <div class="risk-heading"><div><span>OPERATIONAL RISK LAYER</span><h3>${risk.riskLevel.toUpperCase()} RISK</h3><p>${risk.summary}</p></div><strong>${risk.riskScore}<small>/100 risk</small></strong></div>
+        <div class="risk-list">${risk.risks.map((item) => `<article class="${item.severity}"><div><em>${item.severity}</em><b>${item.title}</b></div><p>${item.evidence} ${item.impact}</p><span>Mitigation: ${item.mitigation}</span></article>`).join("")}</div>
+        <small>${risk.disclaimer}</small>
+      </section>`
+    : "";
   const completeBudget = plan.completeBudget;
   const budgetCard = completeBudget?.requested
     ? `<section class="budget-card ${completeBudget.status}">
@@ -138,7 +146,7 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    ${decisionCard}${budgetCard}<h3>${plan.headline}</h3>
+    ${decisionCard}${riskCard}${budgetCard}<h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>
