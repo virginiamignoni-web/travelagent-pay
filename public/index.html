@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Autonomous travel planning powered by MPP payments on Stellar Testnet." />
+    <title>TravelAgent Pay</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="#">TravelAgent<span>Pay</span></a>
+      <div class="header-actions">
+        <div class="network"><i></i> <span id="network-label">Checking payment mode</span></div>
+        <button id="connect-wallet" class="wallet-button" type="button">Connect Freighter</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Agentic travel intelligence</div>
+        <h1>From travel request to<br /><em>ready-to-go plan.</em></h1>
+        <p>Let an autonomous agent research, purchase premium intelligence, and assemble a practical itinerary in minutes.</p>
+        <div class="promise-row">
+          <span>Pay per insight</span><span>No subscription</span><span>User-defined limits</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form id="trip-form" class="planner-card">
+          <div class="card-label">01 — YOUR TRIP</div>
+          <label>Destination<input name="destination" value="São Paulo" required /></label>
+          <div class="split">
+            <label>Days<input name="days" type="number" min="1" max="10" value="4" required /></label>
+            <label>Budget (BRL)<input name="budget" type="number" min="300" value="2500" required /></label>
+          </div>
+          <label>Purpose<input name="purpose" value="Stellar Summit and local exploration" required /></label>
+          <label>Travel style<select name="travelStyle"><option>Balanced</option><option>Budget-conscious</option><option>Comfort</option></select></label>
+          <button type="submit">Launch travel agent <span>→</span></button>
+          <p class="fine-print">Demo price: 0.01 test USDC per premium itinerary.</p>
+        </form>
+
+        <section class="agent-card">
+          <div class="card-label">02 — AGENT WORKSPACE</div>
+          <div id="idle" class="idle-state">
+            <div class="orb"><div></div></div>
+            <h2>Ready to research</h2>
+            <p>Your agent will negotiate access to premium travel data and stay inside your budget.</p>
+          </div>
+          <div id="run" class="run-state hidden">
+            <div class="agent-heading"><div class="mini-orb"></div><div><b>Travel agent active</b><span id="agent-city">Planning</span></div></div>
+            <ol id="steps" class="steps"></ol>
+            <button id="approve-payment" class="pay-button hidden">Approve 0.01 test USDC <span>→</span></button>
+            <div id="plan" class="plan hidden"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer><span>Built for Stellar Builder Summit SP 2026</span><span>MPP Charge · USDC · Testnet</span></footer>
+    <script src="/vendor/freighter-api.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

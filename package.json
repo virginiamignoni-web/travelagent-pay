@@ -1,0 +1,25 @@
+{
+  "name": "travelagent-pay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An autonomous travel-planning agent that buys premium trip intelligence with MPP payments on Stellar Testnet.",
+  "scripts": {
+    "start": "node src/server.js",
+    "start:stellar": "node scripts/start-stellar.js",
+    "dev": "node --watch src/server.js",
+    "setup:agent": "node scripts/setup-agent-wallet.js",
+    "pay": "node src/client.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@stellar/freighter-api": "^6.0.1",
+    "@stellar/mpp": "latest",
+    "@stellar/stellar-sdk": "latest",
+    "express": "latest",
+    "mppx": "latest"
+  }
+}

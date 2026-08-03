@@ -1,0 +1,83 @@
+# TravelAgent Pay
+
+TravelAgent Pay is an autonomous travel-planning demo that purchases premium itinerary intelligence with **MPP Charge payments on Stellar Testnet**. It demonstrates the complete machine-commerce loop:
+
+`request → HTTP 402 → USDC payment → retry → protected itinerary`
+
+The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
+
+## Why it exists
+
+Travel research is fragmented across dozens of services. TravelAgent Pay shows how an agent can purchase only the information it needs, at a transparent per-request price, without requiring the traveler to subscribe to every provider.
+
+## Demo modes
+
+- `PAYMENT_MODE=local`: synthetic 402 and receipt for interface development and rehearsals.
+- `PAYMENT_MODE=stellar`: real MPP Charge settlement in test USDC on Stellar Testnet.
+
+The interface clearly labels the local receipt as a demo. The hackathon video should show the real CLI settlement and transaction evidence from Testnet.
+
+## Wallet architecture
+
+- **Traveler wallet (Freighter):** connects in the browser, proves the traveler is on Testnet, and never exposes its secret key.
+- **Agent wallet (hot Testnet account):** holds a small allowance and signs MPP payments autonomously from the Node client.
+- **Provider wallet:** receives the 0.01 USDC payment for premium itinerary intelligence.
+
+This separation is intentional: requiring a human Freighter approval for every request would stop the agent from operating autonomously.
+
+## Quick start
+
+```bash
+npm install
+copy .env.example .env
+npm start
+```
+
+Open `http://localhost:3001`.
+
+## Real Stellar Testnet flow
+
+1. Create two disposable Testnet accounts: buyer and seller.
+2. Fund both with Friendbot.
+3. Add the official Testnet USDC trustline.
+4. Fund the buyer with Testnet USDC using the Circle faucet.
+5. Set the seller public key as `STELLAR_RECIPIENT`.
+6. Set a strong random `MPP_SECRET_KEY`.
+7. Start the server with `PAYMENT_MODE=stellar`.
+8. Put the buyer's disposable Testnet secret in `.env` as `STELLAR_SECRET`.
+9. Run `npm run pay` in a second terminal.
+
+For a disposable autonomous agent wallet, run `npm run setup:agent -- G...PROVIDER_ADDRESS`. The helper always creates a new account, refuses to overwrite an existing wallet, funds it with Friendbot, creates its USDC Testnet trustline, and stores its secret only in the ignored local `.agent-wallet.env` file.
+
+Never commit `.env`, never use a production wallet secret, and never use a wallet holding real assets.
+
+## Architecture
+
+```text
+Traveler form
+    └── free trip preview
+          └── premium API request
+                ├── 402 + MPP challenge
+                ├── buyer signs USDC SAC transfer
+                ├── server verifies and broadcasts
+                └── 200 + receipt + premium itinerary
+```
+
+## Current scope
+
+- Responsive product demo
+- Safe Freighter connection with enforced Testnet validation
+- Free planning preview
+- Payment-gated itinerary endpoint
+- Local rehearsal payment mode
+- Real MPP Charge configuration for Stellar Testnet
+- Deterministic demo dataset for São Paulo, Rio de Janeiro, and Buenos Aires
+- Unit tests for planning and budget logic
+
+## Hackathon positioning
+
+TravelAgent Pay turns hours of travel research into minutes of autonomous work. It uses low-cost Stellar micropayments so an agent can purchase individual travel insights while respecting a traveler-defined budget.
+
+## Safety and data integrity
+
+The current dataset is intentionally demonstrative. It does not claim to provide live safety, pricing, or transport guarantees. Production use requires authoritative data sources, timestamps, provenance, and user-visible uncertainty.
