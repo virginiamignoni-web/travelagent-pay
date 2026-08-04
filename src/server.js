@@ -12,6 +12,7 @@ import { buildDecisionBrief } from "./decision-engine.js";
 import { buildCompleteBudget } from "./budget-engine.js";
 import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
+import { searchNearbyHotels } from "./hotels.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -66,6 +67,11 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
     ]);
     plan.flightSearch = flightResult.status === "fulfilled" ? flightResult.value : { available: false, reason: flightResult.reason.message, offers: [] };
     plan.protectionZone = locationResult.status === "fulfilled" ? locationResult.value : { available: false, reason: locationResult.reason.message };
+    try {
+      plan.hotelSearch = await searchNearbyHotels({ protectionZone: plan.protectionZone, travelStyle: req.body.travelStyle });
+    } catch (error) {
+      plan.hotelSearch = { available: false, reason: error.message, hotels: [], disclaimer: "Hotel locations could not be loaded; no availability or price claim is made." };
+    }
     plan.mobility = compareMobility({
       radiusKm: req.body.hotelRadiusKm,
       maxCommuteMinutes: req.body.maxCommuteMinutes,

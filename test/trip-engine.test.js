@@ -7,6 +7,7 @@ import { buildDecisionBrief, rankFlightOffers } from "../src/decision-engine.js"
 import { buildCompleteBudget } from "../src/budget-engine.js";
 import { assessOperationalRisk } from "../src/risk-engine.js";
 import { buildContingencyPlan } from "../src/contingency-engine.js";
+import { searchNearbyHotels } from "../src/hotels.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -169,4 +170,10 @@ test("blocks contingency when the trip has no feasible budget or backup flight",
   assert.equal(result.readiness, "blocked");
   assert.ok(result.actions.some((item) => item.id === "flight-research"));
   assert.ok(result.actions.some((item) => item.id === "budget-recovery"));
+});
+
+test("returns an honest unavailable hotel layer without an event center", async () => {
+  const result = await searchNearbyHotels({ protectionZone: null });
+  assert.equal(result.available, false);
+  assert.deepEqual(result.hotels, []);
 });

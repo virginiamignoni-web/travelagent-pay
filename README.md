@@ -22,6 +22,8 @@ The flight trade-off rule compares the cheapest returned offer with the most dir
 
 The contingency playbook turns the risk findings into conditional actions for flight disruption, hotel unavailability, mobility failure, and budget overrun. Each action shows its activation trigger, fallback, estimated incremental cost, and whether the modeled contingency capacity covers it. The prototype recommends changes but requires explicit traveler approval before any supplier purchase or itinerary change.
 
+The hotel geography layer queries OpenStreetMap through the Overpass API for mapped accommodation inside the client-selected event radius. It ranks results by proximity, plots them around the event, and links to each mapped object. These are real geographic records but not commercial offers: tier prices are estimates and availability, taxes, room details, quality, and cancellation remain unverified until Duffel Stays access is enabled.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists
