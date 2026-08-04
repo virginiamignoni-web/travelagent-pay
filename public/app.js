@@ -114,6 +114,23 @@ function addStep(text, state = "done") {
 
 function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
+function readableDuration(value) {
+  const match = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(value || "");
+  if (!match) return "Duração não informada";
+  return [match[1] ? `${Number(match[1])}h` : "", match[2] ? `${Number(match[2])}min` : ""].filter(Boolean).join(" ");
+}
+
+function airportLabel(airport = {}, terminal = null) {
+  const code = airport.iataCode || "—";
+  const name = airport.name || airport.cityName || "Aeroporto não informado";
+  return `${code} · ${name}${terminal ? ` · Terminal ${terminal}` : ""}`;
+}
+
+function flightDetails(offer) {
+  if (!offer.slices?.length) return "";
+  return `<details class="flight-details"><summary>Ver detalhes do voo</summary>${offer.slices.map((slice) => `<section><header><div><span>${slice.direction === "outbound" ? "IDA" : slice.direction === "return" ? "VOLTA" : "TRECHO"}</span><b>${slice.origin?.iataCode || "—"} → ${slice.destination?.iataCode || "—"}</b></div><strong>${readableDuration(slice.duration)}</strong></header>${slice.segments.map((segment, index) => `<article><div class="segment-line"><i>${index + 1}</i><span><b>${airportLabel(segment.origin, segment.originTerminal)}</b><small>${new Date(segment.departingAt).toLocaleString()}</small></span><em>→</em><span><b>${airportLabel(segment.destination, segment.destinationTerminal)}</b><small>${new Date(segment.arrivingAt).toLocaleString()}</small></span></div><div class="segment-meta"><span><small>VOO</small><b>${segment.flightNumber || "Não informado"}</b></span><span><small>DURAÇÃO</small><b>${readableDuration(segment.duration)}</b></span><span><small>OPERADO POR</small><b>${segment.operatingCarrier || segment.marketingCarrier || offer.airline}</b></span>${segment.aircraft ? `<span><small>AERONAVE</small><b>${segment.aircraft}</b></span>` : ""}</div></article>${index < slice.segments.length - 1 ? `<div class="connection-time">Conexão antes do próximo trecho</div>` : ""}`).join("")}</section>`).join("")}</details>`;
+}
+
 function renderPlan(plan) {
   activePlan = plan;
   const flightSearch = plan.flightSearch;
@@ -246,6 +263,7 @@ function renderPlan(plan) {
           <div><b>${offer.airline}</b><span>${flightSearch.fallback ? "DEMO · NOT BOOKABLE" : offer.stops === 0 ? "Direct" : `${offer.stops} stop${offer.stops > 1 ? "s" : ""}`}</span></div>
           <strong>${offer.currency} ${offer.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
           <small>${new Date(offer.departureAt).toLocaleString()} → ${new Date(offer.arrivalAt).toLocaleString()}</small>
+          ${flightDetails(offer)}
         </article>`).join("")}
         <small>${flightSearch.disclaimer}</small>
       </div>`

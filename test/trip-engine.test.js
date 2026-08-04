@@ -12,7 +12,7 @@ import { createApprovalSession, decideApprovalAction } from "../src/approval-eng
 import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
 import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
-import { buildDemoFlightOffers, createDuffelOrder } from "../src/duffel.js";
+import { buildDemoFlightOffers, createDuffelOrder, summarizeOffer } from "../src/duffel.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -336,4 +336,16 @@ test("provides clearly labeled hotel scenarios inside the selected demo radius",
   assert.equal(result.hotels.length, 3);
   assert.equal(result.hotels.every((hotel) => hotel.bookable === false && hotel.distanceKm <= 5), true);
   assert.match(result.disclaimer, /synthetic/);
+});
+
+test("preserves complete Duffel airport, flight, duration, and return details", () => {
+  const segment = (id, origin, destination, number) => ({ id, origin: { iata_code: origin, name: `${origin} Airport`, city_name: origin }, destination: { iata_code: destination, name: `${destination} Airport`, city_name: destination }, departing_at: "2026-09-15T10:00:00", arriving_at: "2026-09-15T12:00:00", duration: "PT02H", marketing_carrier_flight_number: number, marketing_carrier: { iata_code: "IB", name: "Iberia" }, operating_carrier: { name: "Iberia" }, origin_terminal: "3", destination_terminal: "1" });
+  const offer = summarizeOffer({ id: "off_detail", owner: { name: "Iberia", iata_code: "IB" }, total_amount: "589.38", total_currency: "USD", expires_at: "2099-01-01T00:00:00Z", passengers: [], slices: [{ id: "slice_out", duration: "PT12H", segments: [segment("seg_1", "GRU", "MAD", "6824"), segment("seg_2", "MAD", "LIS", "3110")] }, { id: "slice_back", duration: "PT11H", segments: [segment("seg_3", "LIS", "GRU", "3111")] }] });
+  assert.equal(offer.slices.length, 2);
+  assert.equal(offer.slices[0].origin.iataCode, "GRU");
+  assert.equal(offer.slices[0].destination.iataCode, "LIS");
+  assert.equal(offer.slices[0].segments[0].flightNumber, "IB6824");
+  assert.equal(offer.slices[0].segments[0].originTerminal, "3");
+  assert.equal(offer.slices[1].direction, "return");
+  assert.equal(offer.slices[1].duration, "PT11H");
 });

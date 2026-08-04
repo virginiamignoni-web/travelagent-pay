@@ -11,9 +11,31 @@ function requireIata(value, label) {
   return code;
 }
 
-function summarizeOffer(offer) {
+export function summarizeOffer(offer) {
   const slice = offer.slices?.[0];
   const segments = slice?.segments || [];
+  const airport = (value = {}) => ({ iataCode: value.iata_code || null, name: value.name || null, cityName: value.city_name || null });
+  const slices = (offer.slices || []).map((offerSlice, sliceIndex) => ({
+    id: offerSlice.id || null,
+    direction: sliceIndex === 0 ? "outbound" : sliceIndex === 1 ? "return" : `slice_${sliceIndex + 1}`,
+    origin: airport(offerSlice.origin || offerSlice.segments?.[0]?.origin),
+    destination: airport(offerSlice.destination || offerSlice.segments?.at(-1)?.destination),
+    duration: offerSlice.duration || null,
+    segments: (offerSlice.segments || []).map((segment) => ({
+      id: segment.id || null,
+      origin: airport(segment.origin),
+      destination: airport(segment.destination),
+      departingAt: segment.departing_at || null,
+      arrivingAt: segment.arriving_at || null,
+      duration: segment.duration || null,
+      flightNumber: segment.marketing_carrier_flight_number ? `${segment.marketing_carrier?.iata_code || ""}${segment.marketing_carrier_flight_number}` : null,
+      marketingCarrier: segment.marketing_carrier?.name || null,
+      operatingCarrier: segment.operating_carrier?.name || null,
+      aircraft: segment.aircraft?.name || null,
+      originTerminal: segment.origin_terminal || null,
+      destinationTerminal: segment.destination_terminal || null,
+    })),
+  }));
   return {
     id: offer.id,
     airline: offer.owner?.name || "Airline unavailable",
@@ -30,6 +52,7 @@ function summarizeOffer(offer) {
     expiresAt: offer.expires_at,
     passengerIds: (offer.passengers || []).map((passenger) => passenger.id),
     identityDocumentsRequired: Boolean(offer.passenger_identity_documents_required),
+    slices,
   };
 }
 
@@ -40,7 +63,10 @@ export function buildDemoFlightOffers(input = {}, reason = "Duffel sandbox tempo
   const departure = new Date(`${departureDate}T19:00:00Z`);
   const makeOffer = (id, airline, flightNumber, amount, duration, stops, departureOffsetHours, elapsedMinutes) => {
     const departingAt = new Date(departure.getTime() + departureOffsetHours * 3600000);
-    return { id, airline, airlineCode: "ZZ", flightNumber, amount, currency: "EUR", departureAt: departingAt.toISOString(), arrivalAt: new Date(departingAt.getTime() + elapsedMinutes * 60000).toISOString(), duration, stops, expiresAt: null, passengerIds: [], identityDocumentsRequired: false, bookable: false };
+    const arrivingAt = new Date(departingAt.getTime() + elapsedMinutes * 60000);
+    const originAirport = { iataCode: origin, name: `${origin} demo airport`, cityName: input.originCity || origin };
+    const destinationAirport = { iataCode: destination, name: `${destination} demo airport`, cityName: input.destination || destination };
+    return { id, airline, airlineCode: "ZZ", flightNumber, amount, currency: "EUR", departureAt: departingAt.toISOString(), arrivalAt: arrivingAt.toISOString(), duration, stops, expiresAt: null, passengerIds: [], identityDocumentsRequired: false, bookable: false, slices: [{ id: `${id}_outbound`, direction: "outbound", origin: originAirport, destination: destinationAirport, duration, segments: [{ id: `${id}_segment`, origin: originAirport, destination: destinationAirport, departingAt: departingAt.toISOString(), arrivingAt: arrivingAt.toISOString(), duration, flightNumber, marketingCarrier: airline, operatingCarrier: airline, aircraft: null, originTerminal: null, destinationTerminal: null }] }] };
   };
   const offers = [
     makeOffer("demo_flight_direct", "Direct route demo", "ZZ101", 780, "PT9H50M", 0, 0, 590),
