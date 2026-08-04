@@ -78,6 +78,29 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 function renderPlan(plan) {
   activePlan = plan;
   const flightSearch = plan.flightSearch;
+  const protection = plan.journeyProtection;
+  const voucher = protection?.voucher;
+  const protectionVouchers = protection?.vouchers || (voucher ? [voucher] : []);
+  const voucherCard = (item) => `<article class="voucher-card ${item.status}">
+          <div class="voucher-brand"><b>BIT TRAVELS</b><span>ASSISTÊNCIA PROGRAMÁVEL</span></div>
+          <div class="voucher-value"><strong>${item.amount}</strong><span>${item.asset} · TESTNET</span></div>
+          <h4>${item.label}</h4><p>Válido por 24 horas · categoria de uso controlada.</p>
+          <div class="voucher-code" aria-label="Código de resgate"><i></i><i></i><i></i><i></i><b>${item.code}</b></div>
+          ${item.status === "issued" ? `<button type="button" data-redeem-voucher="${item.id}" data-voucher-code="${item.code}" data-voucher-type="${item.type}">Simular resgate credenciado</button>` : `<div class="redeemed-stamp">✓ Resgatado por ${item.redeemedBy} · uso duplicado bloqueado</div>`}
+          <small>${item.settlement.note}</small>
+        </article>`;
+  const protectionCard = protection
+    ? `<section class="journey-protection ${protection.status}">
+        <div class="journey-heading"><div><span>ANAC · JOURNEY PROTECTION ENGINE</span><h3>${protection.status === "redeemed" ? "Assistência utilizada" : protectionVouchers.length ? "Assistência emitida em segundos" : protection.entitlements.length ? "Assistência material ativada" : "Voo monitorado proativamente"}</h3><p>${protection.flight.airline} · ${protection.flight.origin || "origem"} → ${protection.flight.destination || "destino"}</p></div><strong>${protection.delayMinutes}<small>min de atraso</small></strong></div>
+        <div class="event-track"><i class="active">pontual</i><i class="${protection.delayMinutes >= 60 ? "active" : ""}">1h comunicação</i><i class="${protection.delayMinutes >= 120 ? "active" : ""}">2h alimentação</i><i class="${protection.delayMinutes >= 240 ? "active" : ""}">4h assistência</i><i class="${protection.status === "redeemed" ? "active" : ""}">resgate</i></div>
+        ${protection.delayMinutes < 240 ? `<div class="simulation-actions"><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_60">Simular 1 hora</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_120">Simular 2 horas</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_240" data-overnight="true">Simular 4h + pernoite</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_240" data-home-city="true">Simular 4h no domicílio</button></div>` : ""}
+        ${protection.entitlements.length ? `<div class="entitlement-list">${protection.entitlements.map((item) => `<div><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></div>`).join("")}</div>` : ""}
+        ${protection.entitlementOptions.length ? `<div class="passenger-choice"><b>Escolha obrigatória do passageiro</b><span>${protection.entitlementOptions.map((item) => item.replaceAll("_", " ")).join(" · ")}</span></div>` : ""}
+        ${protectionVouchers.length ? `<div class="voucher-grid">${protectionVouchers.map(voucherCard).join("")}</div>` : ""}
+        <div class="journey-ledger"><b>Protection ledger</b><span>${protection.ledger.length} eventos registrados</span></div>
+        <small>${protection.policy.rule} ${protection.disclaimer}</small>
+      </section>`
+    : "";
   const approval = plan.approvalQueue;
   const approvalCard = approval
     ? `<section class="approval-card">
@@ -180,7 +203,7 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    ${decisionCard}${approvalCard}${riskCard}${contingencyCard}${budgetCard}${hotelCard}<h3>${plan.headline}</h3>
+    ${protectionCard}${decisionCard}${approvalCard}${riskCard}${contingencyCard}${budgetCard}${hotelCard}<h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>
@@ -222,7 +245,7 @@ form.addEventListener("submit", async (event) => {
   addStep("Inteligência premium da BIT Travels selecionada");
   await wait(350);
 
-  const paidResponse = await fetch("/api/premium-trip-plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(tripInput) });
+  const paidResponse = await fetch("/api/premium-trip-plan", { method: "POST", headers: { "content-type": "application/json", ...(connectedWallet ? { "x-traveler-wallet": connectedWallet.address } : {}) }, body: JSON.stringify(tripInput) });
   if (paidResponse.status === 402) {
     addStep("Payment required — 0.01 test USDC", "wait");
     payButton.innerHTML = runtimeMode === "local"
@@ -234,6 +257,48 @@ form.addEventListener("submit", async (event) => {
 });
 
 planNode.addEventListener("click", async (event) => {
+  const protectionButton = event.target.closest("button[data-protection-session]");
+  if (protectionButton && activePlan) {
+    protectionButton.disabled = true;
+    try {
+      const response = await fetch(`/api/protection-sessions/${protectionButton.dataset.protectionSession}/events`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ event: protectionButton.dataset.event, context: { overnightRequired: protectionButton.dataset.overnight === "true", atHomeCity: protectionButton.dataset.homeCity === "true" } }),
+      });
+      if (!response.ok) throw new Error(`Protection API returned ${response.status}`);
+      activePlan.journeyProtection = await response.json();
+      renderPlan(activePlan);
+    } catch (error) {
+      protectionButton.disabled = false;
+      window.alert(error.message);
+    }
+    return;
+  }
+
+  const redeemButton = event.target.closest("button[data-redeem-voucher]");
+  if (redeemButton && activePlan) {
+    redeemButton.disabled = true;
+    try {
+      const response = await fetch(`/api/vouchers/${redeemButton.dataset.redeemVoucher}/redeem`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          code: redeemButton.dataset.voucherCode,
+          merchantId: redeemButton.dataset.voucherType === "hotel" ? "LIS-AIRPORT-HOTEL-01" : redeemButton.dataset.voucherType === "transport" ? "LIS-TRANSFER-01" : "LIS-AIRPORT-CAFE-01",
+          merchantCategory: redeemButton.dataset.voucherType === "hotel" ? "airport_hotel" : redeemButton.dataset.voucherType === "transport" ? "airport_transport" : "airport_food",
+        }),
+      });
+      if (!response.ok) throw new Error((await response.json()).detail || `Voucher API returned ${response.status}`);
+      activePlan.journeyProtection = await (await fetch(`/api/protection-sessions/${activePlan.journeyProtection.sessionId}`)).json();
+      renderPlan(activePlan);
+    } catch (error) {
+      redeemButton.disabled = false;
+      window.alert(error.message);
+    }
+    return;
+  }
+
   const button = event.target.closest("button[data-action-id]");
   if (!button || !activePlan) return;
   button.disabled = true;
@@ -261,7 +326,7 @@ payButton.addEventListener("click", async () => {
   await wait(650);
   const response = await fetch("/api/premium-trip-plan", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-demo-payment": "approved" },
+    headers: { "content-type": "application/json", "x-demo-payment": "approved", ...(connectedWallet ? { "x-traveler-wallet": connectedWallet.address } : {}) },
     body: JSON.stringify(tripInput),
   });
   if (!response.ok) throw new Error(`Payment flow returned ${response.status}`);

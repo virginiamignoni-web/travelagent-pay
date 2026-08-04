@@ -9,6 +9,7 @@ import { assessOperationalRisk } from "../src/risk-engine.js";
 import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
+import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -199,4 +200,54 @@ test("records an authorization in the approval audit ledger", () => {
   assert.equal(decided.actions[0].decidedBy, "test-traveler");
   assert.equal(decided.status, "decisions_complete");
   assert.ok(decided.ledger.some((entry) => entry.event === "action_authorized"));
+});
+
+test("issues a testnet meal voucher when a flight reaches 120 minutes of delay", () => {
+  const session = createProtectionSession({
+    input: { origin: "GRU", destinationAirport: "LIS", travelerWallet: "GTEST" },
+    primaryFlight: { airline: "Demo Air" },
+  });
+  const delayed = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });
+  assert.equal(delayed.status, "assistance_issued");
+  assert.equal(delayed.voucher.amount, "15.00");
+  assert.equal(delayed.voucher.asset, "USDC");
+  assert.equal(delayed.voucher.network, "stellar:testnet");
+  assert.equal(delayed.voucher.status, "issued");
+});
+
+test("redeems a voucher once and blocks duplicate redemption", () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
+  const issued = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });
+  const redeemed = redeemVoucher({
+    voucherId: issued.voucher.id,
+    code: issued.voucher.code,
+    merchantId: "LIS-CAFE-01",
+    merchantCategory: "airport_food",
+  });
+  assert.equal(redeemed.status, "redeemed");
+  assert.throws(() => redeemVoucher({ voucherId: issued.voucher.id, code: issued.voucher.code, merchantCategory: "airport_food" }), /already been redeemed/);
+});
+
+test("applies the progressive ANAC assistance thresholds", () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
+  const oneHour = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_60" });
+  assert.ok(oneHour.entitlements.some((item) => item.type === "communication"));
+  assert.equal(oneHour.vouchers.length, 0);
+
+  const twoHours = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });
+  assert.ok(twoHours.vouchers.some((item) => item.type === "meal"));
+
+  const fourHours = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_240", context: { overnightRequired: true, atHomeCity: false } });
+  assert.ok(fourHours.vouchers.some((item) => item.type === "transport"));
+  assert.ok(fourHours.vouchers.some((item) => item.type === "hotel"));
+  assert.deepEqual(fourHours.entitlementOptions, ["reaccommodation", "full_refund", "alternative_transport"]);
+});
+
+test("does not issue hotel when the passenger is in their home city", () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
+  const result = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_240", context: { overnightRequired: true, atHomeCity: true } });
+  assert.ok(result.vouchers.some((item) => item.type === "meal"));
+  assert.ok(result.vouchers.some((item) => item.type === "transport"));
+  assert.equal(result.vouchers.some((item) => item.type === "hotel"), false);
+  assert.ok(result.entitlements.some((item) => item.type === "home_transport"));
 });

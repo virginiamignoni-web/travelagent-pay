@@ -49,6 +49,7 @@ export async function searchFlightOffers(input = {}, token = process.env.DUFFEL_
       cabin_class: "economy",
       return_offers: true,
     } }),
+    signal: AbortSignal.timeout(10000),
   });
 
   const payload = await response.json();

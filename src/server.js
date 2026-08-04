@@ -14,6 +14,7 @@ import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
 import { searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
+import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -39,6 +40,28 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/trip-preview", (req, res) => {
   res.json(buildPreview(req.body));
+});
+
+app.get("/api/protection-sessions/:sessionId", (req, res) => {
+  const session = getProtectionSession(req.params.sessionId);
+  if (!session) return res.status(404).json({ error: "Protection session was not found or expired" });
+  return res.json(session);
+});
+
+app.post("/api/protection-sessions/:sessionId/events", (req, res, next) => {
+  try {
+    return res.json(recordProtectionEvent({ sessionId: req.params.sessionId, event: req.body.event, context: req.body.context }));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post("/api/vouchers/:voucherId/redeem", (req, res, next) => {
+  try {
+    return res.json(redeemVoucher({ voucherId: req.params.voucherId, ...req.body }));
+  } catch (error) {
+    return next(error);
+  }
 });
 
 app.get("/api/approval-sessions/:sessionId", (req, res) => {
@@ -131,6 +154,10 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       riskAssessment: plan.riskAssessment,
     });
     plan.approvalQueue = createApprovalSession({ input: req.body, contingencyPlan: plan.contingencyPlan, decision: plan.decision });
+    plan.journeyProtection = createProtectionSession({
+      input: { ...req.body, travelerWallet: req.headers["x-traveler-wallet"] || null },
+      primaryFlight: plan.decision.primaryFlight,
+    });
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());

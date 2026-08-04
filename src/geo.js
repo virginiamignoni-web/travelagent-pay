@@ -59,7 +59,7 @@ export async function geocodeEvent(address, radiusKm = 5) {
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("limit", "1");
   url.searchParams.set("q", query);
-  const response = await fetch(url, { headers: { "User-Agent": "TravelAgentPay-Hackathon-Demo/0.1", Accept: "application/json" } });
+  const response = await fetch(url, { headers: { "User-Agent": "TravelAgentPay-Hackathon-Demo/0.1", Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error(`Geocoding returned ${response.status}`);
   const [result] = await response.json();
   if (!result) throw new Error("Event address could not be located");

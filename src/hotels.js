@@ -22,7 +22,7 @@ export async function searchNearbyHotels({ protectionZone, travelStyle, limit = 
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "TravelAgentPay-Hackathon-Demo/0.1" },
     body: new URLSearchParams({ data: query }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(10000),
   });
   if (!response.ok) throw new Error(`OpenStreetMap hotel search returned ${response.status}`);
   const payload = await response.json();
@@ -62,4 +62,3 @@ export async function searchNearbyHotels({ protectionZone, travelStyle, limit = 
   cache.set(key, result);
   return result;
 }
-

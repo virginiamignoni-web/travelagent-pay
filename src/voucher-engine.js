@@ -1,0 +1,147 @@
+import { createHash, randomUUID } from "node:crypto";
+
+const protectionSessions = new Map();
+const vouchers = new Map();
+const VALID_EVENTS = ["on_time", "delayed_60", "delayed_120", "delayed_240"];
+
+const BENEFIT_RULES = {
+  meal: { label: "Voucher Alimentação", amount: "15.00", validFor: ["restaurant", "cafe", "airport_food"] },
+  transport: { label: "Voucher Transporte", amount: "25.00", validFor: ["airport_transport", "taxi", "ride_hailing"] },
+  hotel: { label: "Voucher Hospedagem", amount: "80.00", validFor: ["hotel", "airport_hotel"] },
+};
+
+function clone(value) { return structuredClone(value); }
+function now() { return new Date().toISOString(); }
+function redemptionCode(voucherId) {
+  return createHash("sha256").update(`bit-travels-testnet:${voucherId}`).digest("hex").slice(0, 16).toUpperCase();
+}
+
+function sessionVouchers(session) {
+  return session.voucherIds.map((id) => vouchers.get(id)).filter(Boolean);
+}
+
+function publicSession(session) {
+  const issued = sessionVouchers(session);
+  return clone({ ...session, vouchers: issued, voucher: issued.find((item) => item.type === "meal") || issued[0] || null });
+}
+
+function issueVoucher(session, type) {
+  const existing = sessionVouchers(session).find((item) => item.type === type);
+  if (existing) return existing;
+  const rule = BENEFIT_RULES[type];
+  const issuedAt = now();
+  const id = randomUUID();
+  const voucher = {
+    id,
+    code: redemptionCode(id),
+    type,
+    label: rule.label,
+    amount: rule.amount,
+    asset: "USDC",
+    network: "stellar:testnet",
+    status: "issued",
+    validFor: rule.validFor,
+    issuedAt,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    travelerWallet: session.travelerWallet,
+    settlement: {
+      mode: "testnet_voucher_demo",
+      onChain: false,
+      transactionHash: null,
+      note: "Direito e resgate funcionais no MVP. A liquidação on-chain ao estabelecimento é a próxima integração Stellar.",
+    },
+    audit: [{ at: issuedAt, event: "voucher_issued", actor: "BIT Travels Journey Protection Engine" }],
+  };
+  vouchers.set(id, voucher);
+  session.voucherIds.push(id);
+  session.ledger.push({ at: issuedAt, event: "voucher_issued", voucherId: id, type, amount: voucher.amount, asset: voucher.asset });
+  return voucher;
+}
+
+function addEntitlement(session, type, detail) {
+  if (session.entitlements.some((item) => item.type === type)) return;
+  const at = now();
+  session.entitlements.push({ type, detail, grantedAt: at });
+  session.ledger.push({ at, event: "entitlement_granted", type, detail });
+}
+
+function applyAnacRules(session) {
+  if (session.delayMinutes >= 60) addEntitlement(session, "communication", "Internet ou telefone disponibilizado durante a espera.");
+  if (session.delayMinutes >= 120) issueVoucher(session, "meal");
+  if (session.delayMinutes >= 240) {
+    addEntitlement(session, "passenger_choice", "Oferecer reacomodação, reembolso integral ou execução por outra modalidade de transporte.");
+    issueVoucher(session, "transport");
+    if (session.context.specialAssistance || (session.context.overnightRequired && !session.context.atHomeCity)) {
+      issueVoucher(session, "hotel");
+    } else if (session.context.atHomeCity) {
+      addEntitlement(session, "home_transport", "Transporte aeroporto–residência–aeroporto; hospedagem não emitida automaticamente.");
+    } else {
+      addEntitlement(session, "accommodation_review", "Sem pernoite informado: acomodação e necessidade de hotel devem ser confirmadas.");
+    }
+  }
+  const issued = sessionVouchers(session);
+  session.status = issued.length ? "assistance_issued" : session.entitlements.length ? "assistance_active" : "monitoring";
+}
+
+export function createProtectionSession({ input = {}, primaryFlight } = {}) {
+  const createdAt = now();
+  const session = {
+    sessionId: randomUUID(), createdAt, updatedAt: createdAt, status: "monitoring", currentEvent: "on_time", delayMinutes: 0,
+    flight: { airline: primaryFlight?.airline || "Flight pending", departureAt: primaryFlight?.departureAt || null, arrivalAt: primaryFlight?.arrivalAt || null, origin: input.origin || null, destination: input.destinationAirport || null },
+    travelerWallet: input.travelerWallet || null,
+    context: { overnightRequired: false, atHomeCity: false, specialAssistance: false },
+    policy: {
+      jurisdiction: "ANAC Resolução 400/2016",
+      communicationThresholdMinutes: 60,
+      mealThresholdMinutes: 120,
+      accommodationThresholdMinutes: 240,
+      network: "stellar:testnet",
+      rule: "Hotel somente quando houver pernoite, salvo necessidades de assistência especial; no domicílio, pode ser oferecido apenas traslado.",
+    },
+    entitlementOptions: [], entitlements: [], voucherIds: [],
+    ledger: [{ at: createdAt, event: "monitoring_started", flight: primaryFlight?.airline || "pending" }],
+    disclaimer: "Demonstração em Testnet. Valores são ilustrativos; elegibilidade, valores e liquidação dependem de acordo com a companhia aérea e validação operacional.",
+  };
+  protectionSessions.set(session.sessionId, session);
+  return publicSession(session);
+}
+
+export function recordProtectionEvent({ sessionId, event, context = {} } = {}) {
+  const session = protectionSessions.get(sessionId);
+  if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
+  if (!VALID_EVENTS.includes(event)) throw Object.assign(new Error("Event must be on_time, delayed_60, delayed_120, or delayed_240"), { statusCode: 400 });
+  if (sessionVouchers(session).some((item) => item.status === "redeemed")) throw Object.assign(new Error("A case with redeemed assistance cannot be reset"), { statusCode: 409 });
+  const at = now();
+  session.context = { ...session.context, ...context };
+  session.currentEvent = event;
+  session.delayMinutes = event === "delayed_240" ? 240 : event === "delayed_120" ? 120 : event === "delayed_60" ? 60 : 0;
+  session.updatedAt = at;
+  session.ledger.push({ at, event: "flight_status_recorded", status: event, delayMinutes: session.delayMinutes, context: clone(session.context) });
+  applyAnacRules(session);
+  if (session.delayMinutes >= 240) session.entitlementOptions = ["reaccommodation", "full_refund", "alternative_transport"];
+  return publicSession(session);
+}
+
+export function getProtectionSession(sessionId) {
+  const session = protectionSessions.get(sessionId);
+  return session ? publicSession(session) : null;
+}
+
+export function redeemVoucher({ voucherId, code, merchantId, merchantCategory } = {}) {
+  const voucher = vouchers.get(voucherId);
+  if (!voucher) throw Object.assign(new Error("Voucher was not found"), { statusCode: 404 });
+  if (voucher.status !== "issued") throw Object.assign(new Error("Voucher has already been redeemed"), { statusCode: 409 });
+  if (voucher.code !== String(code || "").toUpperCase()) throw Object.assign(new Error("Invalid voucher code"), { statusCode: 403 });
+  if (!voucher.validFor.includes(merchantCategory)) throw Object.assign(new Error("Merchant category is not eligible for this voucher"), { statusCode: 403 });
+  if (new Date(voucher.expiresAt) <= new Date()) throw Object.assign(new Error("Voucher has expired"), { statusCode: 410 });
+  const at = now();
+  voucher.status = "redeemed"; voucher.redeemedAt = at; voucher.redeemedBy = merchantId || "demo-airport-merchant"; voucher.merchantCategory = merchantCategory;
+  voucher.audit.push({ at, event: "voucher_redeemed", actor: voucher.redeemedBy, merchantCategory });
+  const session = [...protectionSessions.values()].find((item) => item.voucherIds.includes(voucherId));
+  if (session) {
+    session.updatedAt = at;
+    session.ledger.push({ at, event: "voucher_redeemed", voucherId, type: voucher.type, merchantId: voucher.redeemedBy });
+    if (sessionVouchers(session).every((item) => item.status === "redeemed")) session.status = "redeemed";
+  }
+  return clone(voucher);
+}
