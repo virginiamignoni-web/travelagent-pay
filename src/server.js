@@ -33,7 +33,7 @@ app.get("/vendor/freighter-api.js", (_req, res) => {
 app.use(express.static(join(here, "..", "public")));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, project: "TravelAgent Pay", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN) });
+  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN) });
 });
 
 app.post("/api/trip-preview", (req, res) => {
@@ -119,10 +119,10 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
 
 app.use((error, _req, res, _next) => {
   console.error(error);
-  res.status(500).json({ error: "TravelAgent Pay could not complete this step", detail: error.message });
+  res.status(500).json({ error: "BIT Travels Concierge could not complete this step", detail: error.message });
 });
 
 app.listen(port, () => {
-  console.log(`TravelAgent Pay running at http://localhost:${port}`);
+  console.log(`BIT Travels Concierge running at http://localhost:${port}`);
   console.log(`Payment mode: ${paymentMode} | Network: stellar:testnet`);
 });

@@ -191,7 +191,7 @@ form.addEventListener("submit", async (event) => {
   payButton.classList.add("hidden");
   idle.classList.add("hidden");
   run.classList.remove("hidden");
-  agentCity.textContent = `Planning ${tripInput.destination}`;
+  agentCity.textContent = `Cuidando de ${tripInput.destination}`;
 
   addStep(`Trip request understood · ${tripInput.eventName}`);
   if (connectedWallet) addStep(`Traveler wallet connected · ${shortAddress(connectedWallet.address)}`);
@@ -202,7 +202,7 @@ form.addEventListener("submit", async (event) => {
   addStep(`Event protection zone set to ${tripInput.hotelRadiusKm} km`);
   addStep(`${tripInput.transportPreference.replaceAll("_", " ")} · maximum ${tripInput.maxCommuteMinutes} minutes`);
   await wait(350);
-  addStep("Premium travel intelligence selected");
+  addStep("Inteligência premium da BIT Travels selecionada");
   await wait(350);
 
   const paidResponse = await fetch("/api/premium-trip-plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(tripInput) });

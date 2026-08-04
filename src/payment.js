@@ -53,5 +53,5 @@ export function createPaymentGate({ mode, recipient, secretKey }) {
     ],
   });
 
-  return mppx.charge({ amount: "0.01", description: "TravelAgent Pay premium itinerary" });
+  return mppx.charge({ amount: "0.01", description: "BIT Travels Concierge premium itinerary" });
 }

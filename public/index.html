@@ -4,12 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Autonomous travel planning powered by MPP payments on Stellar Testnet." />
-    <title>TravelAgent Pay</title>
+    <title>BIT Travels Concierge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <header>
-      <a class="brand" href="#">TravelAgent<span>Pay</span></a>
+      <a class="brand" href="#"><img src="/bit-travels-logo.png" alt="BIT Travels" /><span><b>BIT TRAVELS</b><small>CONCIERGE</small></span></a>
       <div class="header-actions">
         <div class="network"><i></i> <span id="network-label">Checking payment mode</span></div>
         <button id="connect-wallet" class="wallet-button" type="button">Connect Freighter</button>
@@ -18,17 +21,17 @@
 
     <main>
       <section class="hero">
-        <div class="eyebrow">Agentic travel intelligence</div>
-        <h1>From travel request to<br /><em>ready-to-go plan.</em></h1>
-        <p>Let an autonomous agent research, purchase premium intelligence, and assemble a practical itinerary in minutes.</p>
+        <div class="eyebrow">BIT Travels · camada de proteção</div>
+        <h1>Seu concierge de viagem.<br /><em>Cada decisão protegida.</em></h1>
+        <p>Voos, hospedagem, mobilidade, orçamento, riscos e planos alternativos reunidos em uma experiência inteligente da BIT Travels.</p>
         <div class="promise-row">
-          <span>Pay per insight</span><span>No subscription</span><span>User-defined limits</span>
+          <span>Voos e hotéis</span><span>Orçamento protegido</span><span>Plano B acionável</span>
         </div>
       </section>
 
       <section class="workspace">
         <form id="trip-form" class="planner-card">
-          <div class="card-label">01 — YOUR TRIP</div>
+          <div class="card-label">01 — SUA VIAGEM</div>
           <label>Departure city<input name="originCity" value="São Paulo" required /></label>
           <div class="split">
             <label>Origin airport<input name="origin" value="GRU" minlength="3" maxlength="3" required /></label>
@@ -56,19 +59,19 @@
           <label>Preferred transport<select name="transportPreference"><option value="public_transport" selected>Public transport</option><option value="walking">Walking</option><option value="ride_hailing">Taxi or ride app</option><option value="rental_car">Rental car</option><option value="compare_all">Compare all</option></select></label>
           <label>Travel style<select name="travelStyle"><option>Balanced</option><option>Budget-conscious</option><option>Comfort</option></select></label>
           <label>Hotel preferences<textarea name="hotelPreferences" rows="3" placeholder="Breakfast, cancellation, accessibility, parking…">Breakfast included and flexible cancellation</textarea></label>
-          <button type="submit">Launch travel agent <span>→</span></button>
+          <button type="submit">Planejar com o concierge <span>→</span></button>
           <p class="fine-print">Demo price: 0.01 test USDC per premium itinerary.</p>
         </form>
 
         <section class="agent-card">
-          <div class="card-label">02 — AGENT WORKSPACE</div>
+          <div class="card-label">02 — BIT CONCIERGE</div>
           <div id="idle" class="idle-state">
             <div class="orb"><div></div></div>
-            <h2>Ready to research</h2>
-            <p>Your agent will negotiate access to premium travel data and stay inside your budget.</p>
+            <h2>Pronto para cuidar da sua viagem</h2>
+            <p>O concierge da BIT Travels pesquisa, compara e protege suas escolhas dentro dos limites definidos por você.</p>
           </div>
           <div id="run" class="run-state hidden">
-            <div class="agent-heading"><div class="mini-orb"></div><div><b>Travel agent active</b><span id="agent-city">Planning</span></div></div>
+            <div class="agent-heading"><div class="mini-orb"></div><div><b>BIT Concierge ativo</b><span id="agent-city">Planejando</span></div></div>
             <ol id="steps" class="steps"></ol>
             <button id="approve-payment" class="pay-button hidden">Approve 0.01 test USDC <span>→</span></button>
             <div id="plan" class="plan hidden"></div>
@@ -77,7 +80,7 @@
       </section>
     </main>
 
-    <footer><span>Built for Stellar Builder Summit SP 2026</span><span>MPP Charge · USDC · Testnet</span></footer>
+    <footer><span>BIT Travels · turismo com uma camada de proteção</span><span>Stellar · USDC · Testnet</span></footer>
     <script src="/vendor/freighter-api.js"></script>
     <script type="module" src="/app.js"></script>
   </body>

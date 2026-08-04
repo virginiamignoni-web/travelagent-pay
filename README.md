@@ -1,6 +1,6 @@
-# TravelAgent Pay
+# BIT Travels Concierge
 
-TravelAgent Pay is an autonomous travel-planning demo that purchases premium itinerary intelligence with **MPP Charge payments on Stellar Testnet**. It demonstrates the complete machine-commerce loop:
+BIT Travels Concierge is the autonomous travel-protection layer of BIT Travels. The demo purchases premium itinerary intelligence with **MPP Charge payments on Stellar Testnet** and demonstrates the complete machine-commerce loop:
 
 `request → HTTP 402 → USDC payment → retry → protected itinerary`
 
