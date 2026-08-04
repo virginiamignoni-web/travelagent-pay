@@ -13,8 +13,8 @@ import { buildCompleteBudget } from "./budget-engine.js";
 import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
 import { searchNearbyHotels } from "./hotels.js";
-import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
-import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
+import { decideApprovalAction, getApprovalSession } from "./approval-engine.js";
+import { getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -153,11 +153,13 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       completeBudget: plan.completeBudget,
       riskAssessment: plan.riskAssessment,
     });
-    plan.approvalQueue = createApprovalSession({ input: req.body, contingencyPlan: plan.contingencyPlan, decision: plan.decision });
-    plan.journeyProtection = createProtectionSession({
-      input: { ...req.body, travelerWallet: req.headers["x-traveler-wallet"] || null },
-      primaryFlight: plan.decision.primaryFlight,
-    });
+    plan.productStage = "planning";
+    plan.nextStep = {
+      id: "review_and_reserve",
+      label: "Revisar e reservar",
+      available: false,
+      note: "A reserva, a carteira da viagem e o monitoramento serão criados somente depois da confirmação do cliente.",
+    };
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());

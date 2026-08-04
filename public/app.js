@@ -156,6 +156,12 @@ function renderPlan(plan) {
       </section>`
     : "";
   const decision = plan.decision;
+  const planningHandoff = plan.nextStep
+    ? `<section class="planning-handoff">
+        <div><span>PRÓXIMA ETAPA</span><h3>${plan.nextStep.label}</h3><p>${plan.nextStep.note}</p></div>
+        <button type="button" disabled>Em construção · etapa 2</button>
+      </section>`
+    : "";
   const decisionCard = decision
     ? `<section class="decision-card">
         <div class="score-ring"><strong>${decision.protectionScore}</strong><span>/100</span></div>
@@ -205,7 +211,7 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    ${protectionCard}${decisionCard}${approvalCard}${riskCard}${contingencyCard}${budgetCard}${hotelCard}<h3>${plan.headline}</h3>
+    ${decisionCard}${planningHandoff}${budgetCard}${riskCard}${contingencyCard}${hotelCard}<h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>
@@ -227,7 +233,6 @@ form.addEventListener("submit", async (event) => {
   tripInput.budget = Number(tripInput.budget);
   tripInput.hotelRadiusKm = Number(tripInput.hotelRadiusKm);
   tripInput.maxCommuteMinutes = Number(tripInput.maxCommuteMinutes);
-  tripInput.autonomyLimitBrl = Number(tripInput.autonomyLimitBrl);
   steps.innerHTML = "";
   planNode.classList.add("hidden");
   payButton.classList.add("hidden");

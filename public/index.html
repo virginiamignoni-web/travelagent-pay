@@ -13,6 +13,12 @@
   <body>
     <header>
       <a class="brand" href="#"><img src="/bit-travels-logo.png" alt="BIT Travels" /><span><b>BIT TRAVELS</b><small>CONCIERGE</small></span></a>
+      <nav class="product-nav" aria-label="Jornada do cliente">
+        <a class="active" href="#planner">Planejar</a>
+        <span>Minhas viagens</span>
+        <span>Proteção</span>
+        <span>Wallet</span>
+      </nav>
       <div class="header-actions">
         <div class="network"><i></i> <span id="network-label">Checking payment mode</span></div>
         <button id="connect-wallet" class="wallet-button" type="button">Connect Freighter</button>
@@ -21,15 +27,22 @@
 
     <main>
       <section class="hero">
-        <div class="eyebrow">BIT Travels · camada de proteção</div>
-        <h1>Seu concierge de viagem.<br /><em>Cada decisão protegida.</em></h1>
-        <p>Voos, hospedagem, mobilidade, orçamento, riscos e planos alternativos reunidos em uma experiência inteligente da BIT Travels.</p>
+        <div class="eyebrow">ETAPA 1 · PLANEJAMENTO</div>
+        <h1>Planeje antes de reservar.<br /><em>Decida com clareza.</em></h1>
+        <p>Compare voos, hospedagem, mobilidade, orçamento e riscos. Nesta etapa, o concierge recomenda — nenhuma reserva, alteração ou emissão é realizada.</p>
         <div class="promise-row">
-          <span>Voos e hotéis</span><span>Orçamento protegido</span><span>Plano B acionável</span>
+          <span>Pesquisa real em sandbox</span><span>Comparação transparente</span><span>Nenhuma compra automática</span>
         </div>
       </section>
 
-      <section class="workspace">
+      <section class="journey-progress" aria-label="Etapas da jornada">
+        <div class="active"><b>1</b><span>Planejar<small>Pesquisa e comparação</small></span></div>
+        <div><b>2</b><span>Confirmar<small>Escolhas e reserva</small></span></div>
+        <div><b>3</b><span>Viajar<small>Monitoramento ativo</small></span></div>
+        <div><b>4</b><span>Proteger<small>Assistência e vouchers</small></span></div>
+      </section>
+
+      <section id="planner" class="workspace">
         <form id="trip-form" class="planner-card">
           <div class="card-label">01 — SUA VIAGEM</div>
           <label>Departure city<input name="originCity" value="São Paulo" required /></label>
@@ -38,10 +51,6 @@
             <label>Destination airport<input name="destinationAirport" value="LIS" minlength="3" maxlength="3" required /></label>
           </div>
           <label>Destination city<input name="destination" value="Lisboa" required /></label>
-          <div class="split">
-            <label>Flight number<input name="flightNumber" value="TP88" placeholder="TP88" /></label>
-            <label>Reservation code (PNR)<input name="bookingReference" value="MERIDIAN26" placeholder="ABC123" /></label>
-          </div>
           <label>Main event or commitment<input name="eventName" value="Stellar Meridian" required /></label>
           <label>Event address<input name="eventAddress" value="Convento do Beato, Alameda do Beato, 1950-042 Lisboa, Portugal" required /></label>
           <div class="split">
@@ -62,18 +71,17 @@
           </div>
           <label>Preferred transport<select name="transportPreference"><option value="public_transport" selected>Public transport</option><option value="walking">Walking</option><option value="ride_hailing">Taxi or ride app</option><option value="rental_car">Rental car</option><option value="compare_all">Compare all</option></select></label>
           <label>Travel style<select name="travelStyle"><option>Balanced</option><option>Budget-conscious</option><option>Comfort</option></select></label>
-          <label>Autonomy limit per action (BRL)<input name="autonomyLimitBrl" type="number" min="0" value="100" required /></label>
           <label>Hotel preferences<textarea name="hotelPreferences" rows="3" placeholder="Breakfast, cancellation, accessibility, parking…">Breakfast included and flexible cancellation</textarea></label>
           <button type="submit">Planejar com o concierge <span>→</span></button>
           <p class="fine-print">Demo price: 0.01 test USDC per premium itinerary.</p>
         </form>
 
         <section class="agent-card">
-          <div class="card-label">02 — BIT CONCIERGE</div>
+          <div class="card-label">02 — RESULTADO DO PLANEJAMENTO</div>
           <div id="idle" class="idle-state">
             <div class="orb"><div></div></div>
-            <h2>Pronto para cuidar da sua viagem</h2>
-            <p>O concierge da BIT Travels pesquisa, compara e protege suas escolhas dentro dos limites definidos por você.</p>
+            <h2>Pronto para comparar sua viagem</h2>
+            <p>O concierge organiza as alternativas e mostra os impactos antes de você confirmar qualquer reserva.</p>
           </div>
           <div id="run" class="run-state hidden">
             <div class="agent-heading"><div class="mini-orb"></div><div><b>BIT Concierge ativo</b><span id="agent-city">Planejando</span></div></div>
