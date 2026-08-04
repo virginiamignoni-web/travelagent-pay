@@ -30,6 +30,8 @@ The controlled-autonomy layer creates a server-side approval session from the co
 
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
+Passenger-assistance vouchers also have an on-chain issuance proof. When a new meal, transport, or accommodation voucher is created, the Testnet airline treasury sends a real `0.01 USDC` microtransfer to the connected traveler wallet and stores the Stellar transaction hash, ledger, source, destination, timestamp, and explorer link with the voucher. The displayed `15/25/80 USDC` benefit values remain illustrative; only the clearly labeled `0.01 USDC` proof amount is transferred.
+
 ## Why it exists
 
 Travel research is fragmented across dozens of services. TravelAgent Pay shows how an agent can purchase only the information it needs, at a transparent per-request price, without requiring the traveler to subscribe to every provider.
@@ -46,6 +48,7 @@ The interface clearly labels the local receipt as a demo. The hackathon video sh
 - **Traveler wallet (Freighter):** connects in the browser, proves the traveler is on Testnet, and never exposes its secret key.
 - **Agent wallet (hot Testnet account):** holds a small allowance and signs MPP payments autonomously from the Node client.
 - **Provider wallet:** receives the 0.01 USDC payment for premium itinerary intelligence.
+- **Testnet airline treasury:** signs a 0.01 USDC issuance-proof transfer for every new assistance voucher.
 
 This separation is intentional: requiring a human Freighter approval for every request would stop the agent from operating autonomously.
 
@@ -103,6 +106,7 @@ Traveler form
 - Payment-gated itinerary endpoint
 - Local rehearsal payment mode
 - Real MPP Charge configuration for Stellar Testnet
+- Real 0.01 USDC Testnet microsettlement and transaction hash for every newly issued voucher
 - Deterministic demo dataset for São Paulo, Rio de Janeiro, and Buenos Aires
 - Live sandbox flight-offer search through Duffel Developer Test mode
 - Unit tests for planning and budget logic

@@ -1,7 +1,7 @@
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 import { buildPreview, buildPremiumPlan } from "./trip-engine.js";
 import { createPaymentGate } from "./payment.js";
@@ -14,7 +14,8 @@ import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
 import { buildDemoHotels, searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
-import { createProtectionSession, decideRecoveryAction, getProtectionSession, linkProtectionServices, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "./voucher-engine.js";
+import { attachVoucherSettlement, createProtectionSession, decideRecoveryAction, getProtectionSession, linkProtectionServices, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "./voucher-engine.js";
+import { createVoucherSettlementService } from "./stellar-voucher-settlement.js";
 import { verifyFlightStatus } from "./aviationstack.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
 import { databaseInfo, findVouchers } from "./database.js";
@@ -22,12 +23,19 @@ import { databaseInfo, findVouchers } from "./database.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
 if (existsSync(localEnv)) loadEnvFile(localEnv);
+const agentWalletEnv = existsSync(join(here, "..", ".agent-wallet.env"))
+  ? Object.fromEntries(readFileSync(join(here, "..", ".agent-wallet.env"), "utf8").split(/\r?\n/).filter((line) => line.includes("=")).map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]))
+  : {};
 const port = Number(process.env.PORT || 3001);
 const paymentMode = process.env.PAYMENT_MODE || "local";
 const gate = createPaymentGate({
   mode: paymentMode,
   recipient: process.env.STELLAR_RECIPIENT,
   secretKey: process.env.MPP_SECRET_KEY,
+});
+const voucherSettlementService = createVoucherSettlementService({
+  issuerSecret: process.env.VOUCHER_ISSUER_SECRET || agentWalletEnv.STELLAR_SECRET,
+  fallbackRecipient: process.env.VOUCHER_DEFAULT_RECIPIENT || agentWalletEnv.STELLAR_RECIPIENT,
 });
 
 const app = express();
@@ -38,7 +46,7 @@ app.get("/vendor/freighter-api.js", (_req, res) => {
 app.use(express.static(join(here, "..", "public")));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), aviationstackConfigured: Boolean(process.env.AVIATIONSTACK_ACCESS_KEY), database: databaseInfo() });
+  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), aviationstackConfigured: Boolean(process.env.AVIATIONSTACK_ACCESS_KEY), voucherMicrosettlementConfigured: voucherSettlementService.enabled, voucherTreasury: voucherSettlementService.issuerAddress, database: databaseInfo() });
 });
 
 app.get("/api/payment-proof", (_req, res) => {
@@ -116,6 +124,17 @@ app.get("/api/protection-sessions/:sessionId", (req, res) => {
   return res.json(session);
 });
 
+async function settleProtectionVouchers(protection) {
+  let current = protection;
+  for (const voucher of current.vouchers || []) {
+    if (voucher.settlement?.transactionHash) continue;
+    const settlement = await voucherSettlementService.settle(voucher);
+    attachVoucherSettlement({ voucherId: voucher.id, settlement });
+    current = getProtectionSession(current.sessionId);
+  }
+  return current;
+}
+
 async function verifyAndApplyProtection(sessionId, { reportedDelayMinutes = 0, context = {} } = {}) {
   let session = getProtectionSession(sessionId);
   if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
@@ -127,7 +146,8 @@ async function verifyAndApplyProtection(sessionId, { reportedDelayMinutes = 0, c
   const verification = await verifyFlightStatus({ flight: session.flight, reportedDelayMinutes });
   if (!verification.verified) return { pending: true, protection: recordProtectionReport({ sessionId, event: reportedDelayMinutes >= 240 ? "delayed_240" : reportedDelayMinutes >= 120 ? "delayed_120" : reportedDelayMinutes >= 60 ? "delayed_60" : "on_time", context, verification }) };
   const confirmedEvent = verification.delayMinutes >= 240 ? "delayed_240" : verification.delayMinutes >= 120 ? "delayed_120" : verification.delayMinutes >= 60 ? "delayed_60" : "on_time";
-  return { pending: false, protection: recordProtectionEvent({ sessionId, event: confirmedEvent, context, verification }) };
+  const protection = recordProtectionEvent({ sessionId, event: confirmedEvent, context, verification });
+  return { pending: false, protection: await settleProtectionVouchers(protection) };
 }
 
 app.post("/api/protection-sessions/:sessionId/verify", async (req, res, next) => {
@@ -137,7 +157,7 @@ app.post("/api/protection-sessions/:sessionId/verify", async (req, res, next) =>
   } catch (error) { return next(error); }
 });
 
-app.post("/api/protection-sessions/:sessionId/demo-delay", (req, res, next) => {
+app.post("/api/protection-sessions/:sessionId/demo-delay", async (req, res, next) => {
   try {
     const checkedAt = new Date().toISOString();
     const reservation = listReservations().find((item) => item.journeyProtection?.sessionId === req.params.sessionId);
@@ -145,12 +165,13 @@ app.post("/api/protection-sessions/:sessionId/demo-delay", (req, res, next) => {
       hotel: reservation.hotel ? { id: reservation.hotel.id, name: reservation.hotel.name, status: reservation.supplierExecution?.hotelBooked ? "booked" : "selected_sandbox" } : null,
       mobility: reservation.mobility ? { id: reservation.mobility.id, name: reservation.mobility.label, status: "selected_sandbox", estimatedMinutes: reservation.mobility.estimatedMinutes } : null,
     } });
-    return res.json(recordProtectionEvent({
+    const protection = recordProtectionEvent({
       sessionId: req.params.sessionId,
       event: "delayed_120",
       context: req.body?.context,
       verification: { verified: true, simulated: true, status: "testnet_scenario", delayMinutes: 120, reportedDelayMinutes: 120, checkedAt, source: "BIT Travels Testnet Scenario" },
-    }));
+    });
+    return res.json(await settleProtectionVouchers(protection));
   } catch (error) { return next(error); }
 });
 
@@ -207,7 +228,7 @@ app.get("/api/voucher-wallet", (req, res) => {
     travelerWallet,
     summary: { count: vouchers.length, availableCount: issued.length, redeemedCount: redeemed.length, issuedUsdc: total(vouchers), availableUsdc: total(issued), redeemedUsdc: total(redeemed) },
     vouchers,
-    audit: { generatedAt: new Date().toISOString(), hashAlgorithm: "SHA-256", onChainSettlements: vouchers.filter((item) => item.settlement?.transactionHash).length, disclaimer: "Values and settlement are demonstrative on Testnet; hashes prove the integrity of the prototype records." },
+    audit: { generatedAt: new Date().toISOString(), hashAlgorithm: "SHA-256", onChainSettlements: vouchers.filter((item) => item.settlement?.transactionHash).length, disclaimer: "Benefit values are illustrative. New vouchers use a real 0.01 USDC Stellar Testnet microtransfer as on-chain issuance proof; SHA-256 hashes prove record integrity." },
   });
 });
 

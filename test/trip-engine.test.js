@@ -10,7 +10,7 @@ import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { buildDemoHotels, searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
-import { createProtectionSession, decideRecoveryAction, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "../src/voucher-engine.js";
+import { attachVoucherSettlement, createProtectionSession, decideRecoveryAction, getProtectionSession, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "../src/voucher-engine.js";
 import { summarizeFlightVerification, verifyFlightStatus } from "../src/aviationstack.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
 import { buildDemoFlightOffers, createDuffelOrder, summarizeOffer } from "../src/duffel.js";
@@ -335,6 +335,19 @@ test("links every voucher to an auditable receipt and passenger notification", (
   assert.match(voucher.notification.message, /BIT booking BIT987654/);
   assert.match(voucher.notification.message, /PNR ABC123/);
   assert.equal(voucher.notification.status, "delivered");
+});
+
+test("attaches a confirmed Stellar microsettlement to the voucher audit trail", () => {
+  const session = createProtectionSession({ input: { travelerWallet: "GTEST" }, primaryFlight: { airline: "Demo Air", flightNumber: "BT101" } });
+  const issued = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
+  const transactionHash = "a".repeat(64);
+  attachVoucherSettlement({ voucherId: issued.id, settlement: { mode: "stellar_testnet_microsettlement", onChain: true, transactionHash, amount: "0.01", asset: "USDC", network: "stellar:testnet", submittedAt: "2026-08-04T22:03:16Z", explorerUrl: `https://stellar.expert/explorer/testnet/tx/${transactionHash}` } });
+  const settled = getProtectionSession(session.sessionId).voucher;
+  assert.equal(settled.settlement.onChain, true);
+  assert.equal(settled.settlement.amount, "0.01");
+  assert.equal(settled.settlement.transactionHash, transactionHash);
+  assert.match(settled.notification.message, /On-chain issuance proof confirmed/);
+  assert.ok(getProtectionSession(session.sessionId).ledger.some((entry) => entry.event === "voucher_microsettlement_confirmed"));
 });
 
 test("creates an auditable sandbox reservation only after explicit selection", () => {

@@ -9,6 +9,7 @@
     "start:stellar": "node scripts/start-stellar.js",
     "dev": "node --watch src/server.js",
     "setup:agent": "node scripts/setup-agent-wallet.js",
+    "settle:vouchers:testnet": "node scripts/settle-pending-vouchers.js",
     "pay": "node src/client.js",
     "test": "node --test"
   },

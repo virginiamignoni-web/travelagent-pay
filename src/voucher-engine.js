@@ -40,6 +40,7 @@ function presentVoucher(voucher) {
     const pnr = presented.bookingReference && !/não informada/i.test(presented.bookingReference) ? ` and PNR ${presented.bookingReference}` : "";
     presented.notification.title = `${rule.label} issued`;
     presented.notification.message = `${rule.label} for ${presented.amount} USDC Testnet issued under ${rule.legalBasis}, for flight ${presented.flightReference} and ${bitReference}${pnr}.`;
+    if (presented.settlement?.transactionHash) presented.notification.message += ` On-chain issuance proof confirmed with a ${presented.settlement.amount} ${presented.settlement.asset} Stellar Testnet microtransfer.`;
   }
   if (presented.settlement && !presented.settlement.transactionHash) presented.settlement.note = "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.";
   return presented;
@@ -252,6 +253,27 @@ export function getProtectionSession(sessionId) {
   const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
   if (session) protectionSessions.set(sessionId, session);
   return session ? publicSession(session) : null;
+}
+
+export function attachVoucherSettlement({ voucherId, settlement } = {}) {
+  const voucher = vouchers.get(voucherId) || findVoucher(voucherId);
+  if (!voucher) throw Object.assign(new Error("Voucher was not found"), { statusCode: 404 });
+  vouchers.set(voucherId, voucher);
+  if (voucher.settlement?.transactionHash) return clone(voucher);
+  if (!settlement?.transactionHash) throw new Error("A Stellar transaction hash is required to settle a voucher");
+  const at = settlement.submittedAt || now();
+  voucher.settlement = clone(settlement);
+  voucher.notification.message += ` On-chain issuance proof confirmed with a ${settlement.amount} ${settlement.asset} Stellar Testnet microtransfer.`;
+  voucher.audit.push({ at, event: "voucher_microsettlement_confirmed", actor: "BIT Travels Airline Treasury", transactionHash: settlement.transactionHash, amount: settlement.amount, asset: settlement.asset });
+  persistVoucher(voucher);
+  const session = protectionSessions.get(voucher.protectionSessionId) || findProtectionSession(voucher.protectionSessionId);
+  if (session) {
+    protectionSessions.set(session.sessionId, session);
+    session.updatedAt = at;
+    session.ledger.push({ at, event: "voucher_microsettlement_confirmed", voucherId, transactionHash: settlement.transactionHash, amount: settlement.amount, asset: settlement.asset });
+    persistProtectionSession(session);
+  }
+  return clone(voucher);
 }
 
 export function linkProtectionServices({ sessionId, linkedServices = {} } = {}) {

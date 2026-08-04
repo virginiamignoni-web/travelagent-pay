@@ -382,7 +382,7 @@ function protectionVoucherCard(voucher) {
       <span><b>Flight</b>${voucher.flightReference || "Unavailable"}</span>
       <span><b>Bookings</b>BIT ${voucher.internalReference || "unavailable"} · PNR ${voucher.bookingReference || "unavailable"}</span>
     </div>
-    <div class="center-voucher-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm || "SHA-256"}</b><code>${voucher.auditReceipt?.hash || "Hash pending"}</code></div>
+    <div class="center-voucher-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm || "SHA-256"}</b><code>${voucher.auditReceipt?.hash || "Hash pending"}</code>${voucher.settlement?.transactionHash ? `<b>Stellar microsettlement · ${voucher.settlement.amount} ${voucher.settlement.asset}</b><a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open in Stellar Expert ↗</span></a>` : `<b>Stellar microsettlement pending</b>`}</div>
     <small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Category-controlled use"}</small>
   </article>`;
 }
@@ -437,7 +437,7 @@ function walletVoucherCard(voucher) {
       <span class="booking-references"><i><b>BIT Travels booking</b>${voucher.internalReference || "Unavailable"}</i><i><b>Airline PNR</b>${voucher.bookingReference || "Unavailable"}</i></span>
     </div>
     <div class="wallet-voucher-meta"><span><b>Valid until</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Merchant categories</b>${voucher.validFor.join(" · ")}</span><span><b>Responsible issuer</b>${voucher.issuer?.name || "Unidentified"}</span><span><b>Airline linked to flight</b>${voucher.issuer?.airline || "Unavailable"}</span></div>
-    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar settlement</b><code>${voucher.settlement?.transactionHash || "Not performed · off-chain demonstration credit"}</code><small>${voucher.settlement?.note || ""}</small></div>
+    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar microsettlement${voucher.settlement?.onChain ? ` · ${voucher.settlement.amount} ${voucher.settlement.asset}` : ""}</b>${voucher.settlement?.transactionHash ? `<a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open transaction ↗</span></a>` : `<code>Not performed · historical off-chain demonstration credit</code>`}<small>${voucher.settlement?.note || ""}</small></div>
   </article>`;
 }
 
