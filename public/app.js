@@ -423,7 +423,7 @@ function walletVoucherCard(voucher) {
     <div class="wallet-voucher-top"><span>${voucher.label}</span><b>${voucher.status === "redeemed" ? "RESGATADO" : "DISPONÍVEL"}</b></div>
     <div class="wallet-voucher-value"><strong>${voucher.amount}</strong><span>${voucher.asset}<small>Stellar Testnet</small></span></div>
     <p>${voucher.notification?.message || voucher.legalBasis}</p>
-    <div class="wallet-voucher-meta"><span><b>Validade</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Categorias</b>${voucher.validFor.join(" · ")}</span><span><b>Voo</b>${voucher.flightReference || "Não emitido"}</span><span><b>PNR</b>${voucher.bookingReference || "Não emitido"}</span></div>
+    <div class="wallet-voucher-meta"><span><b>Validade</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Categorias</b>${voucher.validFor.join(" · ")}</span><span><b>Voo</b>${voucher.flightReference || "Não emitido"}</span><span><b>Reserva BIT Travels</b>${voucher.internalReference || "Não informada"}</span><span><b>PNR da companhia aérea</b>${voucher.bookingReference || "Não emitido"}</span></div>
     <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm}</b><code>${voucher.auditReceipt?.hash}</code><b>Carimbo de data e hora</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar transaction hash</b><code>${voucher.settlement?.transactionHash || "Pendente · demonstração off-chain"}</code></div>
   </article>`;
 }

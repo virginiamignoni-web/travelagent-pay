@@ -42,6 +42,8 @@ function issueVoucher(session, type) {
   const id = randomUUID();
   const flightReference = session.flight.number || session.flight.airline || "voo não identificado";
   const bookingReference = session.bookingReference || "reserva não informada";
+  const internalReference = session.internalReference || "referência BIT não informada";
+  const reservationMessage = session.internalReference ? `à reserva BIT ${session.internalReference}${session.bookingReference ? ` e ao PNR ${session.bookingReference}` : ""}` : session.bookingReference ? `ao PNR ${session.bookingReference}` : "à viagem monitorada";
   const auditRecord = {
     event: "benefit_issued",
     voucherId: id,
@@ -52,6 +54,7 @@ function issueVoucher(session, type) {
     issuedAt,
     flightReference,
     bookingReference,
+    internalReference,
     legalBasis: rule.legalBasis,
     travelerWallet: session.travelerWallet,
   };
@@ -71,6 +74,7 @@ function issueVoucher(session, type) {
     travelerWallet: session.travelerWallet,
     flightReference,
     bookingReference,
+    internalReference,
     legalBasis: rule.legalBasis,
     auditReceipt: {
       hash: auditHash(auditRecord),
@@ -84,7 +88,7 @@ function issueVoucher(session, type) {
       status: "delivered",
       deliveredAt: issuedAt,
       title: `${rule.label} emitido`,
-      message: `${rule.label} de ${rule.amount} USDC Testnet emitido conforme ${rule.legalBasis}, referente ao voo ${flightReference} e à reserva ${bookingReference}.`,
+      message: `${rule.label} de ${rule.amount} USDC Testnet emitido conforme ${rule.legalBasis}, referente ao voo ${flightReference} e ${reservationMessage}.`,
     },
     settlement: {
       mode: "testnet_voucher_demo",
@@ -147,6 +151,7 @@ export function createProtectionSession({ input = {}, primaryFlight } = {}) {
     sessionId: randomUUID(), createdAt, updatedAt: createdAt, status: "monitoring", currentEvent: "on_time", delayMinutes: 0,
     flight: { airline: primaryFlight?.airline || "Flight pending", number: primaryFlight?.flightNumber || input.flightNumber || null, departureAt: primaryFlight?.departureAt || null, arrivalAt: primaryFlight?.arrivalAt || null, origin: input.origin || null, destination: input.destinationAirport || null },
     bookingReference: String(input.bookingReference || "").trim().toUpperCase() || null,
+    internalReference: String(input.internalReference || "").trim().toUpperCase() || null,
     travelerWallet: input.travelerWallet || null,
     context: { overnightRequired: false, atHomeCity: false, specialAssistance: false },
     policy: {

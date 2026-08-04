@@ -315,7 +315,7 @@ test("does not issue hotel when the passenger is in their home city", () => {
 
 test("links every voucher to an auditable receipt and passenger notification", () => {
   const session = createProtectionSession({
-    input: { flightNumber: "TP88", bookingReference: "ABC123", travelerWallet: "GTEST" },
+    input: { flightNumber: "TP88", bookingReference: "ABC123", internalReference: "BIT987654", travelerWallet: "GTEST" },
     primaryFlight: { airline: "TAP" },
   });
   const result = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });
@@ -327,7 +327,9 @@ test("links every voucher to an auditable receipt and passenger notification", (
   assert.equal(voucher.settlement.transactionHash, null);
   assert.match(voucher.notification.message, /Art\. 27, inciso II/);
   assert.match(voucher.notification.message, /voo TP88/);
-  assert.match(voucher.notification.message, /reserva ABC123/);
+  assert.equal(voucher.internalReference, "BIT987654");
+  assert.match(voucher.notification.message, /reserva BIT BIT987654/);
+  assert.match(voucher.notification.message, /PNR ABC123/);
   assert.equal(voucher.notification.status, "delivered");
 });
 

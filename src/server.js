@@ -180,7 +180,11 @@ app.post("/api/vouchers/:voucherId/redeem", (req, res, next) => {
 
 app.get("/api/voucher-wallet", (req, res) => {
   const travelerWallet = req.query.travelerWallet || null;
-  const vouchers = findVouchers({ travelerWallet });
+  const reservations = listReservations({ travelerWallet });
+  const vouchers = findVouchers({ travelerWallet }).map((voucher) => {
+    const reservation = reservations.find((item) => item.journeyProtection?.sessionId === voucher.protectionSessionId);
+    return { ...voucher, internalReference: voucher.internalReference || reservation?.internalReference || null, bookingReference: voucher.bookingReference || reservation?.supplierReferences?.pnr || null };
+  });
   const issued = vouchers.filter((item) => item.status === "issued");
   const redeemed = vouchers.filter((item) => item.status === "redeemed");
   const total = (items) => items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2);
