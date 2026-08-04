@@ -37,7 +37,7 @@
 
       <section class="journey-progress" aria-label="Etapas da jornada">
         <div class="active"><b>1</b><span>Planejar<small>Pesquisa e comparação</small></span></div>
-        <div><b>2</b><span>Confirmar<small>Escolhas e reserva</small></span></div>
+        <div id="progress-confirm"><b>2</b><span>Confirmar<small>Escolhas e reserva</small></span></div>
         <div><b>3</b><span>Viajar<small>Monitoramento ativo</small></span></div>
         <div><b>4</b><span>Proteger<small>Assistência e vouchers</small></span></div>
       </section>
@@ -90,6 +90,11 @@
             <div id="plan" class="plan hidden"></div>
           </div>
         </section>
+      </section>
+
+      <section id="reservation-stage" class="reservation-stage hidden" aria-live="polite">
+        <div class="reservation-intro"><span>ETAPA 2 · REVISAR E RESERVAR</span><h2>Confirme suas escolhas</h2><p>Revise o conjunto recomendado antes de criar a viagem ativa.</p></div>
+        <div id="reservation-review"></div>
       </section>
     </main>
 

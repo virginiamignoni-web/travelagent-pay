@@ -9,6 +9,7 @@ import { assessOperationalRisk } from "../src/risk-engine.js";
 import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
+import { createReservation, getReservation } from "../src/reservation-engine.js";
 import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
 
 test("normalizes supported destinations", () => {
@@ -268,4 +269,21 @@ test("links every voucher to an auditable receipt and passenger notification", (
   assert.match(voucher.notification.message, /voo TP88/);
   assert.match(voucher.notification.message, /reserva ABC123/);
   assert.equal(voucher.notification.status, "delivered");
+});
+
+test("creates an auditable sandbox reservation only after explicit selection", () => {
+  const reservation = createReservation({
+    input: { destination: "Lisboa" },
+    selections: { flightId: "offer-1", hotelId: "hotel-1", mobilityMode: "public_transport" },
+    plan: {
+      flightSearch: { offers: [{ id: "offer-1", airline: "Test Air" }] },
+      hotelSearch: { hotels: [{ id: "hotel-1", name: "Hotel Test" }] },
+      mobility: { modes: [{ id: "public_transport", label: "Public transport" }] },
+    },
+  });
+  assert.equal(reservation.status, "confirmed_sandbox");
+  assert.equal(reservation.supplierExecution.charged, false);
+  assert.match(reservation.bookingReference, /^BIT[A-F0-9]{6}$/);
+  assert.equal(reservation.auditReceipt.hash.length, 64);
+  assert.equal(getReservation(reservation.reservationId).bookingReference, reservation.bookingReference);
 });

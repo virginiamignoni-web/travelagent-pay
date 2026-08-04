@@ -13,8 +13,9 @@ import { buildCompleteBudget } from "./budget-engine.js";
 import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
 import { searchNearbyHotels } from "./hotels.js";
-import { decideApprovalAction, getApprovalSession } from "./approval-engine.js";
-import { getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
+import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
+import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
+import { createReservation, getReservation } from "./reservation-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -40,6 +41,27 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/trip-preview", (req, res) => {
   res.json(buildPreview(req.body));
+});
+
+app.get("/api/reservations/:reservationId", (req, res) => {
+  const reservation = getReservation(req.params.reservationId);
+  if (!reservation) return res.status(404).json({ error: "Reservation was not found or expired" });
+  return res.json(reservation);
+});
+
+app.post("/api/reservations", (req, res, next) => {
+  try {
+    if (!req.body.acceptedTerms) throw Object.assign(new Error("Explicit traveler confirmation is required"), { statusCode: 400 });
+    const travelerWallet = req.body.travelerWallet || req.header("x-traveler-wallet") || null;
+    const reservation = createReservation({ ...req.body, travelerWallet });
+    const primaryFlight = reservation.flight || req.body.plan?.decision?.primaryFlight;
+    const sessionInput = { ...req.body.input, bookingReference: reservation.bookingReference, travelerWallet };
+    reservation.approvalQueue = createApprovalSession({ input: sessionInput, contingencyPlan: req.body.plan?.contingencyPlan, decision: req.body.plan?.decision });
+    reservation.journeyProtection = createProtectionSession({ input: sessionInput, primaryFlight });
+    return res.status(201).json(reservation);
+  } catch (error) {
+    return next(error);
+  }
 });
 
 app.get("/api/protection-sessions/:sessionId", (req, res) => {
@@ -157,7 +179,7 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
     plan.nextStep = {
       id: "review_and_reserve",
       label: "Revisar e reservar",
-      available: false,
+      available: true,
       note: "A reserva, a carteira da viagem e o monitoramento serão criados somente depois da confirmação do cliente.",
     };
     const response = result.withReceipt(Response.json(plan));

@@ -63,6 +63,8 @@ fetch("/api/health")
   });
 const planNode = document.querySelector("#plan");
 const agentCity = document.querySelector("#agent-city");
+const reservationStage = document.querySelector("#reservation-stage");
+const reservationReview = document.querySelector("#reservation-review");
 
 let tripInput;
 
@@ -122,7 +124,7 @@ function renderPlan(plan) {
     ? `<section class="hotel-layer">
         <div class="hotel-heading"><div><span>EVENT-CENTERED HOTEL LAYER</span><h3>${hotels.hotels.length} mapped options inside ${hotels.radiusKm} km</h3></div><strong>${hotels.found} found</strong></div>
         <div class="hotel-map"><i class="event-pin" style="left:50%;top:50%">★</i>${hotels.hotels.map((hotel, index) => `<i class="hotel-pin" style="left:${50 + Math.max(-43, Math.min(43, (hotel.longitude - plan.protectionZone.center.longitude) / (plan.protectionZone.boundingBox.east - plan.protectionZone.center.longitude) * 43))}%;top:${50 - Math.max(-43, Math.min(43, (hotel.latitude - plan.protectionZone.center.latitude) / (plan.protectionZone.boundingBox.north - plan.protectionZone.center.latitude) * 43))}%">${index + 1}</i>`).join("")}<small>Event-centered relative map · not a routing map</small></div>
-        <div class="hotel-grid">${hotels.hotels.map((hotel, index) => `<article><div><em>${index + 1}</em><b>${hotel.name}</b></div><strong>${hotel.distanceKm} km</strong><p>${hotel.type.replaceAll("_", " ")} ${hotel.stars ? `· ${hotel.stars} stars` : ""}</p><span>Tier estimate R$ ${hotel.estimatedNightlyBrl.toLocaleString()}/night · fit ${hotel.fitScore}</span><a href="${hotel.mapUrl}" target="_blank" rel="noopener noreferrer">Open mapped location →</a></article>`).join("")}</div>
+        <div class="hotel-grid">${hotels.hotels.map((hotel, index) => `<article class="selectable-option"><label class="option-choice"><input type="radio" name="selectedHotel" value="${hotel.id}" ${index === 0 ? "checked" : ""}> Selecionar</label><div><em>${index + 1}</em><b>${hotel.name}</b></div><strong>${hotel.distanceKm} km</strong><p>${hotel.type.replaceAll("_", " ")} ${hotel.stars ? `· ${hotel.stars} stars` : ""}</p><span>Tier estimate R$ ${hotel.estimatedNightlyBrl.toLocaleString()}/night · fit ${hotel.fitScore}</span><a href="${hotel.mapUrl}" target="_blank" rel="noopener noreferrer">Open mapped location →</a></article>`).join("")}</div>
         <small>${hotels.disclaimer} Source: ${hotels.source}.</small>
       </section>`
     : `<section class="hotel-layer unavailable"><h3>Hotel geography temporarily unavailable</h3><p>${hotels?.reason || "No mapped accommodation was returned inside the selected radius."}</p><small>${hotels?.disclaimer || "Live Duffel Stays inventory remains pending."}</small></section>`;
@@ -159,7 +161,7 @@ function renderPlan(plan) {
   const planningHandoff = plan.nextStep
     ? `<section class="planning-handoff">
         <div><span>PRÓXIMA ETAPA</span><h3>${plan.nextStep.label}</h3><p>${plan.nextStep.note}</p></div>
-        <button type="button" disabled>Em construção · etapa 2</button>
+        <button type="button" data-open-reservation>Revisar escolhas →</button>
       </section>`
     : "";
   const decisionCard = decision
@@ -190,7 +192,7 @@ function renderPlan(plan) {
   const mobilityCards = mobility?.modes?.length
     ? `<div class="mobility-results">
         <div class="mobility-heading"><div><span>MOBILITY PROTECTION</span><h4>${mobility.recommendation}</h4></div><strong>≤ ${mobility.maxCommuteMinutes} min</strong></div>
-        <div class="mobility-grid">${mobility.modes.map((mode) => `<article class="mobility-card ${mode.id === mobility.recommendedMode ? "recommended" : ""}">
+        <div class="mobility-grid">${mobility.modes.map((mode) => `<article class="mobility-card selectable-option ${mode.id === mobility.recommendedMode ? "recommended" : ""}"><label class="option-choice"><input type="radio" name="selectedMobility" value="${mode.id}" ${mode.id === mobility.recommendedMode ? "checked" : ""}> Selecionar</label>
           <div><b>${mode.label}</b>${mode.id === mobility.recommendedMode ? "<em>Recommended</em>" : ""}</div>
           <strong>${mode.estimatedMinutes} min</strong>
           <small>EUR ${mode.estimatedTripCostEur.toFixed(2)} trip estimate · ${mode.emissions} emissions · ${mode.withinLimit ? "within limit" : "over limit"}</small>
@@ -202,7 +204,8 @@ function renderPlan(plan) {
     ? `<div class="flight-results">
         <h4>Top flight options · ${flightSearch.origin} → ${flightSearch.destination}</h4>
         <p>${flightSearch.searched} sandbox offers compared. Showing the five lowest prices.</p>
-        ${flightSearch.offers.map((offer) => `<article class="flight-card">
+        ${flightSearch.offers.map((offer, index) => `<article class="flight-card selectable-option">
+          <label class="option-choice"><input type="radio" name="selectedFlight" value="${offer.id}" ${index === 0 ? "checked" : ""}> Selecionar</label>
           <div><b>${offer.airline}</b><span>${offer.stops === 0 ? "Direct" : `${offer.stops} stop${offer.stops > 1 ? "s" : ""}`}</span></div>
           <strong>${offer.currency} ${offer.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
           <small>${new Date(offer.departureAt).toLocaleString()} → ${new Date(offer.arrivalAt).toLocaleString()}</small>
@@ -220,6 +223,37 @@ function renderPlan(plan) {
       <div><b>First day</b><br>${plan.itinerary[0].focus}</div>
     </div>${locationCard}${mobilityCards}${flightCards}`;
   planNode.classList.remove("hidden");
+}
+
+function selectedValue(name, fallback = null) {
+  return planNode.querySelector(`input[name="${name}"]:checked`)?.value || fallback;
+}
+
+function openReservationReview() {
+  if (!activePlan) return;
+  const flights = activePlan.flightSearch?.offers || [];
+  const hotels = activePlan.hotelSearch?.hotels || [];
+  const modes = activePlan.mobility?.modes || [];
+  const selectedFlightId = selectedValue("selectedFlight", activePlan.decision?.primaryFlight?.id);
+  const flight = flights.find((item) => item.id === selectedFlightId) || activePlan.decision?.primaryFlight;
+  const selectedHotelId = selectedValue("selectedHotel", hotels[0]?.id);
+  const selectedMobilityId = selectedValue("selectedMobility", activePlan.mobility?.recommendedMode);
+  const hotel = hotels.find((item) => item.id === selectedHotelId) || null;
+  const mobility = modes.find((item) => item.id === selectedMobilityId) || modes[0];
+  reservationReview.innerHTML = `<div class="reservation-review-card">
+    <div class="review-grid">
+      <article><span>VOO</span><h3>${flight ? flight.airline : "A definir"}</h3><p>${flight ? `${flight.currency} ${flight.amount.toFixed(2)} · ${flight.stops === 0 ? "direto" : `${flight.stops} escala(s)`}` : "Busca indisponível; não será emitido."}</p></article>
+      <article><span>HOTEL</span><h3>${hotel?.name || "Seleção comercial pendente"}</h3><p>${hotel ? `${hotel.distanceKm} km do evento · estimativa R$ ${hotel.estimatedNightlyBrl}/noite` : "Nenhuma disponibilidade comercial confirmada."}</p></article>
+      <article><span>MOBILIDADE</span><h3>${mobility?.label || "A definir"}</h3><p>${mobility ? `${mobility.estimatedMinutes} min · EUR ${mobility.estimatedTripCostEur.toFixed(2)}` : "Seleção pendente."}</p></article>
+      <article><span>ORÇAMENTO TOTAL</span><h3>R$ ${activePlan.completeBudget?.requested?.totalBrl?.toLocaleString(undefined, {minimumFractionDigits:2}) || "—"}</h3><p>Inclui reserva de emergência; valores de hotel podem ser estimados.</p></article>
+    </div>
+    <label class="confirmation-check"><input id="accept-reservation" type="checkbox"> Confirmo estas escolhas e entendo que esta versão opera em sandbox/testnet, sem emissão ou cobrança real de fornecedores.</label>
+    <button id="confirm-reservation" type="button" data-flight-id="${flight?.id || ""}" data-hotel-id="${hotel?.id || ""}" data-mobility-id="${mobility?.id || ""}">Confirmar reserva demonstrativa →</button>
+    <small>Nenhuma compra, alteração ou cancelamento será executado sem aprovação explícita.</small>
+  </div>`;
+  reservationStage.classList.remove("hidden");
+  document.querySelector("#progress-confirm")?.classList.add("active");
+  reservationStage.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 form.addEventListener("submit", async (event) => {
@@ -264,6 +298,10 @@ form.addEventListener("submit", async (event) => {
 });
 
 planNode.addEventListener("click", async (event) => {
+  if (event.target.closest("button[data-open-reservation]")) {
+    openReservationReview();
+    return;
+  }
   const protectionButton = event.target.closest("button[data-protection-session]");
   if (protectionButton && activePlan) {
     protectionButton.disabled = true;
@@ -323,6 +361,32 @@ planNode.addEventListener("click", async (event) => {
   } catch (error) {
     button.disabled = false;
     button.textContent = original;
+    window.alert(error.message);
+  }
+});
+
+reservationReview.addEventListener("click", async (event) => {
+  const button = event.target.closest("#confirm-reservation");
+  if (!button || !activePlan) return;
+  const acceptedTerms = document.querySelector("#accept-reservation")?.checked;
+  if (!acceptedTerms) return window.alert("Confirme os termos da reserva demonstrativa para continuar.");
+  button.disabled = true;
+  button.textContent = "Criando viagem ativa…";
+  try {
+    const response = await fetch("/api/reservations", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(connectedWallet ? { "x-traveler-wallet": connectedWallet.address } : {}) },
+      body: JSON.stringify({ input: tripInput, plan: activePlan, acceptedTerms, travelerWallet: connectedWallet?.address || null, selections: { flightId: button.dataset.flightId || null, hotelId: button.dataset.hotelId || null, mobilityMode: button.dataset.mobilityId } }),
+    });
+    const reservation = await response.json();
+    if (!response.ok) throw new Error(reservation.detail || `Reservation API returned ${response.status}`);
+    activePlan.reservation = reservation;
+    activePlan.approvalQueue = reservation.approvalQueue;
+    activePlan.journeyProtection = reservation.journeyProtection;
+    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · SANDBOX</span><h2>Reserva ${reservation.bookingReference} confirmada</h2><p>${reservation.notice}</p><div><b>Destino</b><strong>${reservation.destination}</strong></div><div><b>Status</b><strong>Monitoramento preparado</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><small>Na próxima etapa, esta viagem aparecerá em Minhas viagens com wallet, alertas e central de proteção.</small></div>`;
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Confirmar reserva demonstrativa →";
     window.alert(error.message);
   }
 });
