@@ -308,7 +308,7 @@ function openReservationReview() {
   const mobility = modes.find((item) => item.id === selectedMobilityId) || modes[0];
   const bookableFlight = Boolean(flight?.id?.startsWith("off_"));
   const passengerCount = Math.max(1, Number(tripInput?.travelers) || 1);
-  const passengerFields = bookableFlight ? Array.from({ length: passengerCount }, (_, index) => `<fieldset class="passenger-fields"><legend>Passageiro ${index + 1} · Duffel Test mode</legend><div class="passenger-grid"><label>Tratamento<select name="passengerTitle"><option value="ms">Sra.</option><option value="mrs">Sra. (casada)</option><option value="mr">Sr.</option><option value="miss">Srta.</option></select></label><label>Gênero<select name="passengerGender"><option value="f">Feminino</option><option value="m">Masculino</option></select></label><label>Nome<input name="passengerGivenName" required maxlength="20"></label><label>Sobrenome<input name="passengerFamilyName" required maxlength="20"></label><label>Nascimento<input name="passengerBornOn" type="date" required></label><label>E-mail<input name="passengerEmail" type="email" required></label><label>DDI<select name="passengerCountryCode"><option value="+55" selected>🇧🇷 Brasil · +55</option><option value="+351">🇵🇹 Portugal · +351</option><option value="+1">🇺🇸/🇨🇦 EUA/Canadá · +1</option><option value="+34">🇪🇸 Espanha · +34</option><option value="+44">🇬🇧 Reino Unido · +44</option><option value="+33">🇫🇷 França · +33</option><option value="+49">🇩🇪 Alemanha · +49</option><option value="+39">🇮🇹 Itália · +39</option><option value="+54">🇦🇷 Argentina · +54</option><option value="+598">🇺🇾 Uruguai · +598</option><option value="+56">🇨🇱 Chile · +56</option></select></label><label>DDD + telefone<input name="passengerPhoneLocal" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="11999999999" required></label></div><small class="phone-hint">A Duffel receberá DDI + número no padrão internacional. Digite somente números no campo de telefone.</small></fieldset>`).join("") : "";
+  const passengerFields = bookableFlight ? Array.from({ length: passengerCount }, (_, index) => `<fieldset class="passenger-fields"><legend>Passageiro ${index + 1} · ambiente de teste</legend><div class="passenger-grid"><label>Tratamento<select name="passengerTitle"><option value="ms">Sra.</option><option value="mrs">Sra. (casada)</option><option value="mr">Sr.</option><option value="miss">Srta.</option></select></label><label>Gênero<select name="passengerGender"><option value="f">Feminino</option><option value="m">Masculino</option></select></label><label>Nome<input name="passengerGivenName" required maxlength="20"></label><label>Sobrenome<input name="passengerFamilyName" required maxlength="20"></label><label>Nascimento<input name="passengerBornOn" type="date" required></label><label>E-mail<input name="passengerEmail" type="email" required></label><label>DDI<select name="passengerCountryCode"><option value="+55" selected>🇧🇷 Brasil · +55</option><option value="+351">🇵🇹 Portugal · +351</option><option value="+1">🇺🇸/🇨🇦 EUA/Canadá · +1</option><option value="+34">🇪🇸 Espanha · +34</option><option value="+44">🇬🇧 Reino Unido · +44</option><option value="+33">🇫🇷 França · +33</option><option value="+49">🇩🇪 Alemanha · +49</option><option value="+39">🇮🇹 Itália · +39</option><option value="+54">🇦🇷 Argentina · +54</option><option value="+598">🇺🇾 Uruguai · +598</option><option value="+56">🇨🇱 Chile · +56</option><option value="custom">🌐 Outro DDI</option></select></label><label>DDD + telefone<input name="passengerPhoneLocal" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="11999999999" required></label><label class="custom-ddi hidden">Digite o DDI<input name="passengerCustomCountryCode" type="tel" inputmode="numeric" placeholder="+000" maxlength="5"></label></div></fieldset>`).join("") : "";
   reservationReview.innerHTML = `<div class="reservation-review-card">
     <div class="review-grid">
       <article><span>VOO</span><h3>${flight ? flight.airline : "A definir"}</h3><p>${flight ? `${flight.currency} ${flight.amount.toFixed(2)} · ${flight.stops === 0 ? "direto" : `${flight.stops} escala(s)`}` : "Busca indisponível; não será emitido."}</p></article>
@@ -316,7 +316,7 @@ function openReservationReview() {
       <article><span>MOBILIDADE</span><h3>${mobility?.label || "A definir"}</h3><p>${mobility ? `${mobility.estimatedMinutes} min · EUR ${mobility.estimatedTripCostEur.toFixed(2)}` : "Seleção pendente."}</p></article>
       <article><span>ORÇAMENTO TOTAL</span><h3>R$ ${activePlan.completeBudget?.requested?.totalBrl?.toLocaleString(undefined, {minimumFractionDigits:2}) || "—"}</h3><p>Inclui reserva de emergência; valores de hotel podem ser estimados.</p></article>
     </div>
-    ${bookableFlight ? `<section class="duffel-passengers"><span>EMISSÃO AÉREA · DUFFEL ORDERS</span><h3>Dados dos passageiros</h3><p>Enviados à Duffel somente após sua confirmação. Não informe passaporte nesta versão.</p>${passengerFields}</section>` : flight ? `<section class="duffel-passengers"><span>CENÁRIO DE CONTINGÊNCIA</span><h3>Comparação disponível; emissão desativada</h3><p>Esta alternativa pertence ao dataset demonstrativo e não será enviada à Duffel. Faça uma nova busca quando o sandbox estiver acessível.</p></section>` : ""}
+    ${bookableFlight ? `<section class="duffel-passengers"><span>EMISSÃO AÉREA · AMBIENTE DE TESTE</span><h3>Dados dos passageiros</h3><p>Os dados serão enviados ao fornecedor somente depois da sua confirmação. Não informe passaporte nesta versão.</p>${passengerFields}</section>` : flight ? `<section class="duffel-passengers"><span>CENÁRIO DE CONTINGÊNCIA</span><h3>Comparação disponível; emissão desativada</h3><p>Esta alternativa pertence ao dataset demonstrativo e não será enviada ao fornecedor. Faça uma nova busca quando o sandbox estiver acessível.</p></section>` : ""}
     <label class="confirmation-check"><input id="accept-reservation" type="checkbox"> Confirmo estas escolhas e entendo que esta versão opera em sandbox/testnet, sem emissão ou cobrança real de fornecedores.</label>
     <button id="confirm-reservation" type="button" data-flight-id="${flight?.id || ""}" data-hotel-id="${hotel?.id || ""}" data-mobility-id="${mobility?.id || ""}">Confirmar reserva demonstrativa →</button>
     <small>Nenhuma compra, alteração ou cancelamento será executado sem aprovação explícita.</small>
@@ -562,21 +562,36 @@ planNode.addEventListener("click", async (event) => {
   }
 });
 
+reservationReview.addEventListener("change", (event) => {
+  if (event.target.name !== "passengerCountryCode") return;
+  const field = event.target.closest(".passenger-fields");
+  const custom = field?.querySelector(".custom-ddi");
+  const input = custom?.querySelector("input");
+  const enabled = event.target.value === "custom";
+  custom?.classList.toggle("hidden", !enabled);
+  if (input) { input.required = enabled; if (!enabled) input.value = ""; }
+});
+
 reservationReview.addEventListener("click", async (event) => {
   const button = event.target.closest("#confirm-reservation");
   if (!button || !activePlan) return;
   const acceptedTerms = document.querySelector("#accept-reservation")?.checked;
   if (!acceptedTerms) return window.alert("Confirme os termos da reserva demonstrativa para continuar.");
   const passengerFields = [...reservationReview.querySelectorAll(".passenger-fields")];
-  const passengers = passengerFields.map((field) => ({
-    title: field.querySelector('[name="passengerTitle"]').value,
-    gender: field.querySelector('[name="passengerGender"]').value,
-    givenName: field.querySelector('[name="passengerGivenName"]').value.trim(),
-    familyName: field.querySelector('[name="passengerFamilyName"]').value.trim(),
-    bornOn: field.querySelector('[name="passengerBornOn"]').value,
-    email: field.querySelector('[name="passengerEmail"]').value.trim(),
-    phoneNumber: `${field.querySelector('[name="passengerCountryCode"]').value}${field.querySelector('[name="passengerPhoneLocal"]').value.replace(/\D/g, "")}`,
-  }));
+  const passengers = passengerFields.map((field) => {
+    const selectedCode = field.querySelector('[name="passengerCountryCode"]').value;
+    const customCode = field.querySelector('[name="passengerCustomCountryCode"]').value.replace(/\D/g, "");
+    const countryCode = selectedCode === "custom" ? `+${customCode}` : selectedCode;
+    return {
+      title: field.querySelector('[name="passengerTitle"]').value,
+      gender: field.querySelector('[name="passengerGender"]').value,
+      givenName: field.querySelector('[name="passengerGivenName"]').value.trim(),
+      familyName: field.querySelector('[name="passengerFamilyName"]').value.trim(),
+      bornOn: field.querySelector('[name="passengerBornOn"]').value,
+      email: field.querySelector('[name="passengerEmail"]').value.trim(),
+      phoneNumber: `${countryCode}${field.querySelector('[name="passengerPhoneLocal"]').value.replace(/\D/g, "")}`,
+    };
+  });
   const invalidPassenger = passengers.find((item) => !item.givenName || !item.familyName || !/^\d{4}-\d{2}-\d{2}$/.test(item.bornOn) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email) || !/^\+[1-9]\d{7,14}$/.test(item.phoneNumber));
   if (invalidPassenger) return window.alert("Confira os dados dos passageiros. Selecione o DDI e informe DDD + telefone usando somente números.");
   button.disabled = true;
