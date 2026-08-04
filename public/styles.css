@@ -44,3 +44,364 @@ header{background:#FFFFFF;box-shadow:0 4px 24px rgba(0,51,102,.05)}
 .testnet-demonstration{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;padding:16px;border:1px dashed #FDB913;border-radius:14px;background:#fff9e8}.testnet-demonstration span{color:#003366;font:800 8px/1 "Poppins",sans-serif;letter-spacing:1.4px}.testnet-demonstration h3{margin:5px 0}.testnet-demonstration p{margin:0;color:var(--muted);font-size:8px}.testnet-demonstration button{width:auto;margin:0;white-space:nowrap;background:#FDB913;color:#003366}@media(max-width:650px){.testnet-demonstration{align-items:stretch;flex-direction:column}.testnet-demonstration button{width:100%}}
 .recovery-actions{margin-top:12px;padding:17px;border:1px solid #FDB913;border-radius:14px}.recovery-heading span{color:#003366;font:800 8px/1 "Poppins",sans-serif;letter-spacing:1.4px}.recovery-heading h3{margin:5px 0 12px}.recovery-actions article{display:grid;grid-template-columns:1fr auto;gap:14px;margin-top:8px;padding:14px;border-radius:11px;background:#f7f9fb}.recovery-actions article>div{display:flex;min-width:0;flex-direction:column;gap:4px}.recovery-actions b{color:#003366;font-size:11px}.recovery-actions span,.recovery-actions p,.recovery-actions small{margin:0;color:var(--muted);font-size:8px}.recovery-actions code{overflow:hidden;text-overflow:ellipsis;font-size:7px}.recovery-actions aside{display:flex;min-width:150px;flex-direction:column;gap:5px}.recovery-actions strong{color:#003366;font-size:8px;text-transform:uppercase}.recovery-actions button{width:auto;margin:0;padding:8px;font-size:8px}.recovery-actions button.secondary{background:#E5E7EB;color:#003366}@media(max-width:650px){.recovery-actions article{grid-template-columns:1fr}.recovery-actions aside{min-width:0}}
 @media(max-width:650px){.segment-line>span:last-child{grid-column:2}.segment-line>span:last-child::before{content:"↓";color:#FDB913;font-weight:800}}
+
+/* BIT Travels 2026 interface refinement */
+:root {
+  --ink: #003366;
+  --muted: #60758a;
+  --paper: #f4f7fa;
+  --card: #ffffff;
+  --orange: #fdb913;
+  --teal: #fdb913;
+  --line: #e5e7eb;
+  --navy-900: #00264d;
+  --navy-700: #003366;
+  --navy-100: #eaf0f5;
+  --yellow-100: #fff7dc;
+  --shadow-sm: 0 8px 24px rgba(0, 51, 102, .07);
+  --shadow-md: 0 22px 60px rgba(0, 51, 102, .11);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 7%, rgba(253,185,19,.12), transparent 22rem),
+    linear-gradient(180deg, #f8fafc 0, #f3f6f9 45%, #eef3f7 100%);
+  color: var(--ink);
+  font-family: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+h1, h2, h3, h4, h5, h6,
+.brand, button, .eyebrow, .card-label, .product-nav {
+  font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-height: 76px;
+  padding: 12px max(24px, calc((100vw - 1280px) / 2));
+  border-bottom: 1px solid rgba(0,51,102,.08);
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 6px 30px rgba(0,51,102,.06);
+  backdrop-filter: blur(18px);
+}
+
+.brand { gap: 12px; }
+.brand img {
+  width: 50px;
+  height: 50px;
+  padding: 5px;
+  border: 3px solid var(--orange);
+  border-radius: 50%;
+  background: var(--ink);
+  object-fit: contain;
+  box-shadow: 0 6px 18px rgba(0,51,102,.18);
+}
+.brand b { color: var(--ink); font-size: 15px; letter-spacing: .08em; }
+.brand small { color: var(--muted); font-size: 8px; letter-spacing: .28em; }
+
+.product-nav {
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f7f9fb;
+}
+.product-nav a {
+  min-width: 78px;
+  padding: 9px 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.product-nav a:hover { color: var(--ink); }
+.product-nav .active {
+  color: var(--ink);
+  background: var(--card);
+  box-shadow: 0 4px 14px rgba(0,51,102,.09);
+}
+
+.header-actions { gap: 12px; }
+.network {
+  color: var(--muted);
+  font: 800 9px/1.2 "Nunito", sans-serif;
+  letter-spacing: .12em;
+}
+.wallet-button {
+  min-height: 38px;
+  padding: 9px 15px;
+  border-color: rgba(0,51,102,.16);
+  color: var(--ink);
+  background: var(--card);
+  box-shadow: 0 4px 14px rgba(0,51,102,.06);
+}
+
+main { max-width: 1280px; padding: 44px 32px 72px; }
+.hero {
+  isolation: isolate;
+  max-width: none;
+  margin-bottom: 24px;
+  padding: clamp(34px, 5vw, 64px);
+  overflow: hidden;
+  border-radius: 30px;
+  color: #fff;
+  background:
+    linear-gradient(120deg, rgba(0,38,77,.98), rgba(0,51,102,.94)),
+    var(--ink);
+  box-shadow: var(--shadow-md);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  right: clamp(20px, 7vw, 100px);
+  top: 50%;
+  width: min(29vw, 300px);
+  aspect-ratio: 1;
+  border: clamp(22px, 3vw, 42px) solid rgba(253,185,19,.12);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  z-index: -1;
+}
+.hero::after {
+  right: -80px;
+  top: -180px;
+  width: 360px;
+  height: 360px;
+  border: 72px solid rgba(255,255,255,.035);
+  z-index: -1;
+}
+.hero .eyebrow { color: var(--orange); }
+.hero .eyebrow::before { background: var(--orange); }
+.hero h1 {
+  max-width: 850px;
+  margin: 16px 0 20px;
+  color: #fff;
+  font-size: clamp(40px, 5.6vw, 72px);
+  line-height: 1.02;
+  letter-spacing: -.05em;
+}
+.hero h1 em { color: var(--orange); }
+.hero > p {
+  max-width: 760px;
+  color: rgba(255,255,255,.76);
+  font-size: clamp(16px, 1.7vw, 20px);
+}
+.promise-row span {
+  border-color: rgba(255,255,255,.18);
+  color: #fff;
+  background: rgba(255,255,255,.08);
+  backdrop-filter: blur(10px);
+}
+
+.journey-progress { gap: 12px; margin: 0 0 24px; }
+.journey-progress > div {
+  min-height: 66px;
+  padding: 12px 14px;
+  border: 0;
+  background: rgba(255,255,255,.72);
+  box-shadow: var(--shadow-sm);
+}
+.journey-progress > div.active {
+  border: 0;
+  color: var(--ink);
+  background: var(--yellow-100);
+  box-shadow: inset 0 0 0 1px rgba(253,185,19,.65), var(--shadow-sm);
+}
+.journey-progress b { flex: none; color: var(--ink); background: var(--line); }
+.journey-progress .active b { background: var(--orange); }
+.journey-progress span { font-size: 10px; }
+.journey-progress small { font-size: 9px; }
+
+.workspace { grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.planner-card, .agent-card {
+  border: 1px solid rgba(0,51,102,.08);
+  border-radius: 24px;
+  background: rgba(255,255,255,.96);
+  box-shadow: var(--shadow-md);
+}
+.planner-card { padding: 28px; }
+.agent-card { min-height: 620px; padding: 28px; }
+.card-label, .eyebrow {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+.planner-card label { gap: 7px; margin-top: 16px; color: var(--ink); font-size: 11px; }
+input, select, .planner-card textarea {
+  min-height: 46px;
+  border: 1px solid #d8e0e8;
+  border-radius: 12px;
+  color: var(--ink);
+  background: #fbfcfd;
+  font: 600 13px/1.3 "Nunito", sans-serif;
+  transition: border .2s ease, box-shadow .2s ease, background .2s ease;
+}
+input:hover, select:hover, .planner-card textarea:hover { border-color: #b8c5d2; background: #fff; }
+input:focus, select:focus, .planner-card textarea:focus {
+  border-color: var(--orange);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(253,185,19,.16);
+}
+button {
+  min-height: 42px;
+  align-items: center;
+  border-radius: 12px;
+  background: var(--ink);
+  font-size: 11px;
+  letter-spacing: .01em;
+  box-shadow: 0 6px 16px rgba(0,51,102,.13);
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+button:hover { transform: translateY(-1px); background: var(--navy-900); box-shadow: 0 10px 22px rgba(0,51,102,.18); }
+.pay-button, .planner-card > button { color: var(--ink); background: var(--orange); }
+.pay-button:hover, .planner-card > button:hover { color: var(--ink); background: #ffc62e; }
+.fine-print { margin-bottom: 0; }
+
+.idle-state { min-height: 500px; height: auto; }
+.idle-state .orb { width: 86px; height: 86px; background: conic-gradient(var(--orange), var(--ink), var(--orange)); }
+.idle-state h2 { max-width: 460px; color: var(--ink); font-size: 28px; }
+.idle-state p { max-width: 430px; font-size: 14px; }
+.agent-heading { padding: 12px 0 20px; }
+.mini-orb { background: conic-gradient(var(--orange), var(--ink), var(--orange)); }
+.steps { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; padding: 16px 0; }
+.steps li {
+  min-height: 48px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 11px;
+}
+.steps li.done::before { color: var(--ink); }
+
+.plan { padding: 0; border: 0; border-radius: 0; }
+.plan > section, .plan > div:not(.planning-handoff) { margin-bottom: 16px; }
+.decision-card, .budget-card, .risk-card, .contingency-card, .hotel-layer,
+.mobility-results, .flight-results, .approval-card, .journey-protection {
+  border-radius: 18px;
+}
+.decision-card { padding: 20px; background: linear-gradient(135deg, var(--navy-900), var(--ink)); }
+.score-ring { border-color: var(--orange); }
+.decision-copy > span { color: var(--orange); }
+.budget-card, .risk-card, .contingency-card, .hotel-layer, .approval-card {
+  padding: 20px;
+  border-color: rgba(0,51,102,.1);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0,51,102,.055);
+}
+.risk-card.high, .risk-card.critical, .budget-card.adjustment_available, .budget-card.not_feasible {
+  border-color: rgba(253,185,19,.65);
+  background: var(--yellow-100);
+}
+.flight-card, .mobility-card, .hotel-grid article, .approval-list article,
+.contingency-list article, .risk-list article {
+  border-radius: 12px;
+}
+.selectable-option { transition: border .2s ease, box-shadow .2s ease, transform .2s ease; }
+.selectable-option:hover { border-color: var(--orange); box-shadow: 0 8px 18px rgba(0,51,102,.08); transform: translateY(-1px); }
+.option-choice { padding: 5px 8px; border-radius: 999px; background: var(--yellow-100); }
+
+.payment-panel {
+  padding: 20px;
+  border: 0;
+  border-radius: 18px;
+  background: #f5f8fb;
+  box-shadow: inset 0 0 0 1px rgba(0,51,102,.08);
+}
+.payment-flow { gap: 8px; }
+.payment-flow article { min-height: 66px; padding: 12px; border-radius: 12px; }
+.payment-flow article.active { border-color: var(--orange); background: var(--yellow-100); }
+.payment-flow article.complete { border-color: var(--ink); color: var(--ink); }
+.payment-flow article.complete i { background: var(--ink); }
+.payment-proof { border-radius: 14px; background: var(--navy-900); }
+
+.reservation-stage, .my-trips, .protection-center, .voucher-wallet {
+  padding: clamp(22px, 3vw, 38px);
+  border: 1px solid rgba(0,51,102,.08);
+  border-radius: 26px;
+  background: rgba(255,255,255,.97);
+  box-shadow: var(--shadow-md);
+}
+.reservation-stage { margin-top: 24px; }
+.trips-heading h2, .protection-center-heading h2, .wallet-heading h2 { color: var(--ink); font-size: clamp(28px, 3vw, 38px); }
+.active-trip-card { padding: 24px; border: 1px solid rgba(0,51,102,.1); border-radius: 18px; box-shadow: var(--shadow-sm); }
+.trip-route { padding: 15px; border-radius: 12px; background: linear-gradient(120deg, var(--navy-900), var(--ink)); }
+.trip-details > div, .supplier-references > div { border-radius: 12px; background: #f6f8fa; }
+
+.protection-overview { gap: 16px; }
+.flight-monitor, .anac-rules { min-height: 230px; padding: 24px; border-radius: 18px; }
+.flight-monitor { background: linear-gradient(145deg, var(--navy-900), var(--ink)); }
+.anac-rules { border-color: rgba(253,185,19,.65); background: var(--yellow-100); }
+.flight-verification, .protection-actions, .testnet-demonstration,
+.recovery-actions, .center-entitlements, .center-vouchers, .no-benefits, .center-audit {
+  border-radius: 16px;
+}
+.protection-actions { gap: 10px; padding: 18px; background: #f7f9fb; }
+.testnet-demonstration { padding: 18px; background: var(--yellow-100); }
+
+.wallet-summary { gap: 14px; }
+.wallet-summary article { min-height: 125px; justify-content: space-between; padding: 20px; border-radius: 16px; }
+.wallet-summary article:first-child { background: linear-gradient(135deg, var(--navy-900), var(--ink)); }
+.wallet-vouchers { gap: 18px; }
+.wallet-voucher {
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  background: linear-gradient(145deg, var(--navy-900), var(--ink));
+  box-shadow: 0 18px 44px rgba(0,51,102,.18);
+}
+.wallet-voucher > p { min-height: 0; color: rgba(255,255,255,.78); font-size: 10px; line-height: 1.45; }
+.wallet-voucher-meta { gap: 8px; }
+.wallet-voucher-meta span { padding: 9px; border-radius: 9px; }
+.wallet-proof { margin-top: 12px; padding: 12px; border-radius: 10px; }
+.audit-center { padding: 22px; border: 0; border-radius: 18px; background: var(--yellow-100); }
+
+footer {
+  max-width: 1280px;
+  margin: 24px auto 0;
+  padding: 24px 32px;
+  border-top: 1px solid rgba(0,51,102,.1);
+  color: var(--muted);
+}
+
+@media (max-width: 980px) {
+  header { gap: 12px; padding-inline: 20px; }
+  .product-nav { order: 3; width: 100%; overflow-x: auto; }
+  .workspace { grid-template-columns: 1fr; }
+  .planner-card { position: static; }
+  .agent-card { min-height: 520px; }
+  .hero::before { opacity: .5; }
+}
+
+@media (max-width: 680px) {
+  main { padding: 22px 14px 48px; }
+  header { min-height: auto; }
+  .brand img { width: 44px; height: 44px; }
+  .brand b { font-size: 13px; }
+  .header-actions { margin-left: auto; }
+  .wallet-button { max-width: 142px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hero { padding: 32px 22px; border-radius: 22px; }
+  .hero h1 { font-size: clamp(36px, 12vw, 52px); }
+  .hero > p { font-size: 15px; }
+  .journey-progress { grid-template-columns: 1fr 1fr; }
+  .planner-card, .agent-card, .reservation-stage, .my-trips, .protection-center, .voucher-wallet { padding: 20px; border-radius: 20px; }
+  .split, .steps, .review-grid, .wallet-summary, .audit-stats { grid-template-columns: 1fr; }
+  .payment-flow, .proof-grid, .proof-addresses { grid-template-columns: 1fr 1fr; }
+  .protection-actions { grid-template-columns: 1fr; }
+  .protection-actions > div { grid-column: auto; }
+  .wallet-voucher-meta { grid-template-columns: 1fr; }
+  footer { align-items: flex-start; flex-direction: column; gap: 8px; padding-inline: 20px; }
+}
+
+@media (max-width: 420px) {
+  .journey-progress, .payment-flow, .proof-grid, .proof-addresses { grid-template-columns: 1fr; }
+  .product-nav a { min-width: 92px; }
+  .promise-row span { width: 100%; text-align: center; }
+}
