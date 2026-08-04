@@ -269,14 +269,23 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    ${decisionCard}${planningHandoff}${budgetCard}${riskCard}${contingencyCard}${hotelCard}<h3>${plan.headline}</h3>
+    ${budgetCard}
+    ${decisionCard}
+    ${flightCards}
+    ${locationCard}
+    ${hotelCard}
+    ${mobilityCards}
+    ${riskCard}
+    ${contingencyCard}
+    ${planningHandoff}
+    <section class="itinerary-summary"><h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>
       <div><b>Budget</b><br>R$ ${plan.budget.totalBrl.toLocaleString()}</div>
       <div><b>Transport</b><br>${plan.transportPlan[0]}</div>
       <div><b>First day</b><br>${plan.itinerary[0].focus}</div>
-    </div>${locationCard}${mobilityCards}${flightCards}`;
+    </div></section>`;
   planNode.classList.remove("hidden");
 }
 
