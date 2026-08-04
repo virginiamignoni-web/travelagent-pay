@@ -91,6 +91,7 @@ const reservationReview = document.querySelector("#reservation-review");
 const myTrips = document.querySelector("#my-trips");
 const tripsContent = document.querySelector("#trips-content");
 const tripsNav = document.querySelector("#trips-nav");
+const plannerNav = document.querySelector("#planner-nav");
 const plannerSection = document.querySelector("#planner");
 const journeyProgress = document.querySelector(".journey-progress");
 const hero = document.querySelector(".hero");
@@ -629,6 +630,7 @@ reservationReview.addEventListener("click", async (event) => {
   }
 });
 
+plannerNav.addEventListener("click", (event) => { event.preventDefault(); showPlanner(); });
 tripsNav.addEventListener("click", (event) => { event.preventDefault(); renderMyTrips(); });
 protectionNav.addEventListener("click", (event) => { event.preventDefault(); openProtectionCenter(); });
 walletNav.addEventListener("click", (event) => { event.preventDefault(); openVoucherWallet(); });
