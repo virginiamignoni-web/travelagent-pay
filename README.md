@@ -20,6 +20,8 @@ The operational-risk layer checks connections, itinerary duration, arrival margi
 
 The flight trade-off rule compares the cheapest returned offer with the most direct available offer. If the cheap fare adds more than three scheduled hours, the interface warns the traveler and shows the exact time saved, stop difference, and additional price for the more direct option.
 
+The contingency playbook turns the risk findings into conditional actions for flight disruption, hotel unavailability, mobility failure, and budget overrun. Each action shows its activation trigger, fallback, estimated incremental cost, and whether the modeled contingency capacity covers it. The prototype recommends changes but requires explicit traveler approval before any supplier purchase or itinerary change.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists

@@ -11,6 +11,7 @@ import { compareMobility } from "./mobility.js";
 import { buildDecisionBrief } from "./decision-engine.js";
 import { buildCompleteBudget } from "./budget-engine.js";
 import { assessOperationalRisk } from "./risk-engine.js";
+import { buildContingencyPlan } from "./contingency-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -94,6 +95,14 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
     });
     plan.decision.baseProtectionScore = plan.decision.protectionScore;
     plan.decision.protectionScore = plan.riskAssessment.riskAdjustedProtectionScore;
+    plan.contingencyPlan = buildContingencyPlan({
+      input: req.body,
+      primaryFlight: plan.decision.primaryFlight,
+      backupFlight: plan.decision.backupFlight,
+      mobility: plan.mobility,
+      completeBudget: plan.completeBudget,
+      riskAssessment: plan.riskAssessment,
+    });
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());

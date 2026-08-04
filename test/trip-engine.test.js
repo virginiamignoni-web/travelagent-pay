@@ -6,6 +6,7 @@ import { compareMobility } from "../src/mobility.js";
 import { buildDecisionBrief, rankFlightOffers } from "../src/decision-engine.js";
 import { buildCompleteBudget } from "../src/budget-engine.js";
 import { assessOperationalRisk } from "../src/risk-engine.js";
+import { buildContingencyPlan } from "../src/contingency-engine.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -145,4 +146,27 @@ test("does not alert when the cheaper flight adds no more than three hours", () 
   ];
   const result = assessOperationalRisk({ input: {}, primaryFlight: offers[1], flightOffers: offers });
   assert.equal(result.flightComparison.triggered, false);
+});
+
+test("builds funded flight, hotel, and mobility contingencies", () => {
+  const mobility = compareMobility({ radiusKm: 5, maxCommuteMinutes: 30, days: 5, preferredMode: "public_transport" });
+  const result = buildContingencyPlan({
+    input: { budget: 12000, travelers: 1, hotelRadiusKm: 5, transportPreference: "public_transport" },
+    primaryFlight: { airline: "Primary Air", amount: 500, currency: "EUR", stops: 0, duration: "PT9H" },
+    backupFlight: { airline: "Backup Air", amount: 560, currency: "EUR", stops: 1, duration: "PT11H" },
+    mobility,
+    completeBudget: { status: "fits", requested: { differenceBrl: 1800, breakdown: { emergencyReserveBrl: 800 } } },
+    riskAssessment: { arrivalBufferHours: 30 },
+  });
+  assert.equal(result.readiness, "ready");
+  assert.ok(result.actions.some((item) => item.id === "flight-backup" && item.estimatedDeltaBrl === 372));
+  assert.ok(result.actions.some((item) => item.id === "hotel-backup"));
+  assert.ok(result.actions.some((item) => item.id === "mobility-backup"));
+});
+
+test("blocks contingency when the trip has no feasible budget or backup flight", () => {
+  const result = buildContingencyPlan({ input: { budget: 1000 }, completeBudget: { status: "not_feasible", requested: { differenceBrl: -5000, breakdown: { emergencyReserveBrl: 100 } } } });
+  assert.equal(result.readiness, "blocked");
+  assert.ok(result.actions.some((item) => item.id === "flight-research"));
+  assert.ok(result.actions.some((item) => item.id === "budget-recovery"));
 });

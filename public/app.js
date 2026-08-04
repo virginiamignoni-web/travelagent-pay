@@ -76,6 +76,14 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function renderPlan(plan) {
   const flightSearch = plan.flightSearch;
+  const contingency = plan.contingencyPlan;
+  const contingencyCard = contingency
+    ? `<section class="contingency-card ${contingency.readiness}">
+        <div class="contingency-heading"><div><span>BIT TRAVELS CONTINGENCY PLAYBOOK</span><h3>${contingency.readiness === "ready" ? "Plan B is funded and ready" : contingency.readiness === "partial" ? "Plan B needs attention" : "Contingency is blocked"}</h3></div><strong>R$ ${contingency.availableContingencyBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })}<small>available capacity</small></strong></div>
+        <div class="contingency-list">${contingency.actions.map((item) => `<article class="${item.priority}"><div><em>${item.category}</em><b>${item.trigger}</b></div><p>${item.action}</p><span>${item.target}</span><strong>${item.estimatedDeltaBrl === null ? "Cost pending" : `${item.estimatedDeltaBrl === 0 ? "No increase" : `+ R$ ${item.estimatedDeltaBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}`} · ${item.reserveCovers ? "covered" : "not covered"}</strong></article>`).join("")}</div>
+        <small>${contingency.activationPolicy}</small>
+      </section>`
+    : "";
   const risk = plan.riskAssessment;
   const riskCard = risk
     ? `<section class="risk-card ${risk.riskLevel}">
@@ -147,7 +155,7 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    ${decisionCard}${riskCard}${budgetCard}<h3>${plan.headline}</h3>
+    ${decisionCard}${riskCard}${contingencyCard}${budgetCard}<h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>
