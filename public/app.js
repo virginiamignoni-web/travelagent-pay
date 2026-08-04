@@ -65,6 +65,12 @@ const planNode = document.querySelector("#plan");
 const agentCity = document.querySelector("#agent-city");
 const reservationStage = document.querySelector("#reservation-stage");
 const reservationReview = document.querySelector("#reservation-review");
+const myTrips = document.querySelector("#my-trips");
+const tripsContent = document.querySelector("#trips-content");
+const tripsNav = document.querySelector("#trips-nav");
+const plannerSection = document.querySelector("#planner");
+const journeyProgress = document.querySelector(".journey-progress");
+const hero = document.querySelector(".hero");
 
 let tripInput;
 
@@ -256,6 +262,56 @@ function openReservationReview() {
   reservationStage.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function tripCard(reservation) {
+  const trip = reservation.trip || {};
+  const wallet = reservation.travelerWallet ? shortAddress(reservation.travelerWallet) : "Não conectada";
+  return `<article class="active-trip-card">
+    <div class="trip-status"><span>VIAGEM ATIVA · SANDBOX</span><b>Monitoramento preparado</b></div>
+    <div class="trip-title"><div><h3>${trip.destination || reservation.destination}</h3><p>${trip.eventName || "Viagem BIT Travels"}</p></div><strong>${reservation.bookingReference}</strong></div>
+    <div class="trip-route"><b>${trip.origin || "Origem"}</b><i>→</i><b>${trip.destinationAirport || trip.destination || "Destino"}</b><span>${trip.departureDate || "Data pendente"} — ${trip.returnDate || "Data pendente"}</span></div>
+    <div class="trip-details">
+      <div><span>Voo</span><b>${reservation.flight?.airline || "Em seleção comercial"}</b><small>${reservation.flight?.flightNumber || "Sem bilhete emitido"}</small></div>
+      <div><span>Hospedagem</span><b>${reservation.hotel?.name || "Em seleção comercial"}</b><small>${reservation.hotel ? `${reservation.hotel.distanceKm} km do evento` : "Sem quarto reservado"}</small></div>
+      <div><span>Mobilidade</span><b>${reservation.mobility?.label || "A definir"}</b><small>${reservation.mobility ? `${reservation.mobility.estimatedMinutes} min estimados` : "Plano pendente"}</small></div>
+      <div><span>Wallet</span><b>${wallet}</b><small>Stellar Testnet</small></div>
+    </div>
+    <div class="trip-audit"><span><b>Comprovante auditável · SHA-256</b><code>${reservation.auditReceipt.hash}</code></span><span><b>Confirmada em</b><code>${new Date(reservation.createdAt).toLocaleString()}</code></span></div>
+    <div class="trip-actions"><button type="button" data-trip-detail="${reservation.reservationId}">Ver detalhes da viagem</button><button type="button" disabled>Central de proteção · próxima camada</button></div>
+    <div class="trip-detail-panel hidden" data-trip-panel="${reservation.reservationId}"><p>${reservation.notice}</p><ul><li>Nenhuma cobrança real realizada.</li><li>Monitoramento criado após confirmação.</li><li>Alterações futuras exigem aprovação explícita.</li></ul></div>
+  </article>`;
+}
+
+async function renderMyTrips() {
+  hero.classList.add("hidden");
+  journeyProgress.classList.add("hidden");
+  plannerSection.classList.add("hidden");
+  reservationStage.classList.add("hidden");
+  myTrips.classList.remove("hidden");
+  document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === tripsNav));
+  tripsContent.innerHTML = `<div class="trips-loading">Carregando suas viagens…</div>`;
+  const query = connectedWallet ? `?travelerWallet=${encodeURIComponent(connectedWallet.address)}` : "";
+  try {
+    const response = await fetch(`/api/reservations${query}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "Não foi possível carregar as viagens");
+    tripsContent.innerHTML = payload.reservations.length
+      ? `<div class="trips-summary"><b>${payload.reservations.length}</b><span>viagem(ns) ativa(s)</span><small>Wallet: ${connectedWallet ? shortAddress(connectedWallet.address) : "modo demonstração"}</small></div><div class="trips-list">${payload.reservations.map(tripCard).join("")}</div>`
+      : `<div class="empty-trips"><h3>Nenhuma viagem ativa ainda</h3><p>Confirme uma recomendação no planejador para criar sua primeira viagem.</p><button type="button" data-back-planner>Planejar agora →</button></div>`;
+  } catch (error) {
+    tripsContent.innerHTML = `<div class="empty-trips"><h3>Não conseguimos carregar suas viagens</h3><p>${error.message}</p></div>`;
+  }
+  myTrips.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showPlanner() {
+  myTrips.classList.add("hidden");
+  hero.classList.remove("hidden");
+  journeyProgress.classList.remove("hidden");
+  plannerSection.classList.remove("hidden");
+  document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item.getAttribute("href") === "#planner"));
+  plannerSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   tripInput = Object.fromEntries(new FormData(form));
@@ -383,12 +439,26 @@ reservationReview.addEventListener("click", async (event) => {
     activePlan.reservation = reservation;
     activePlan.approvalQueue = reservation.approvalQueue;
     activePlan.journeyProtection = reservation.journeyProtection;
-    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · SANDBOX</span><h2>Reserva ${reservation.bookingReference} confirmada</h2><p>${reservation.notice}</p><div><b>Destino</b><strong>${reservation.destination}</strong></div><div><b>Status</b><strong>Monitoramento preparado</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><small>Na próxima etapa, esta viagem aparecerá em Minhas viagens com wallet, alertas e central de proteção.</small></div>`;
+    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · SANDBOX</span><h2>Reserva ${reservation.bookingReference} confirmada</h2><p>${reservation.notice}</p><div><b>Destino</b><strong>${reservation.destination}</strong></div><div><b>Status</b><strong>Monitoramento preparado</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><button type="button" data-open-trips>Abrir Minhas viagens →</button><small>A viagem agora está disponível com wallet, comprovante e proteção preparada.</small></div>`;
   } catch (error) {
     button.disabled = false;
     button.textContent = "Confirmar reserva demonstrativa →";
     window.alert(error.message);
   }
+});
+
+tripsNav.addEventListener("click", (event) => { event.preventDefault(); renderMyTrips(); });
+document.querySelector("#back-to-planner").addEventListener("click", showPlanner);
+reservationReview.addEventListener("click", (event) => {
+  if (event.target.closest("button[data-open-trips]")) renderMyTrips();
+});
+tripsContent.addEventListener("click", (event) => {
+  if (event.target.closest("button[data-back-planner]")) return showPlanner();
+  const button = event.target.closest("button[data-trip-detail]");
+  if (!button) return;
+  const panel = tripsContent.querySelector(`[data-trip-panel="${button.dataset.tripDetail}"]`);
+  panel?.classList.toggle("hidden");
+  button.textContent = panel?.classList.contains("hidden") ? "Ver detalhes da viagem" : "Ocultar detalhes";
 });
 
 payButton.addEventListener("click", async () => {

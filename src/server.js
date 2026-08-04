@@ -15,7 +15,7 @@ import { buildContingencyPlan } from "./contingency-engine.js";
 import { searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
 import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
-import { createReservation, getReservation } from "./reservation-engine.js";
+import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -49,6 +49,10 @@ app.get("/api/reservations/:reservationId", (req, res) => {
   return res.json(reservation);
 });
 
+app.get("/api/reservations", (req, res) => {
+  res.json({ reservations: listReservations({ travelerWallet: req.query.travelerWallet || null }) });
+});
+
 app.post("/api/reservations", (req, res, next) => {
   try {
     if (!req.body.acceptedTerms) throw Object.assign(new Error("Explicit traveler confirmation is required"), { statusCode: 400 });
@@ -58,7 +62,7 @@ app.post("/api/reservations", (req, res, next) => {
     const sessionInput = { ...req.body.input, bookingReference: reservation.bookingReference, travelerWallet };
     reservation.approvalQueue = createApprovalSession({ input: sessionInput, contingencyPlan: req.body.plan?.contingencyPlan, decision: req.body.plan?.decision });
     reservation.journeyProtection = createProtectionSession({ input: sessionInput, primaryFlight });
-    return res.status(201).json(reservation);
+    return res.status(201).json(saveReservation(reservation));
   } catch (error) {
     return next(error);
   }

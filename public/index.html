@@ -15,7 +15,7 @@
       <a class="brand" href="#"><img src="/bit-travels-logo.png" alt="BIT Travels" /><span><b>BIT TRAVELS</b><small>CONCIERGE</small></span></a>
       <nav class="product-nav" aria-label="Jornada do cliente">
         <a class="active" href="#planner">Planejar</a>
-        <span>Minhas viagens</span>
+        <a id="trips-nav" href="#my-trips">Minhas viagens</a>
         <span>Proteção</span>
         <span>Wallet</span>
       </nav>
@@ -95,6 +95,11 @@
       <section id="reservation-stage" class="reservation-stage hidden" aria-live="polite">
         <div class="reservation-intro"><span>ETAPA 2 · REVISAR E RESERVAR</span><h2>Confirme suas escolhas</h2><p>Revise o conjunto recomendado antes de criar a viagem ativa.</p></div>
         <div id="reservation-review"></div>
+      </section>
+
+      <section id="my-trips" class="my-trips hidden" aria-live="polite">
+        <div class="trips-heading"><div><span>ETAPA 3 · MINHAS VIAGENS</span><h2>Sua jornada em um só lugar</h2><p>Reservas confirmadas, próximos passos e proteção preparada.</p></div><button id="back-to-planner" type="button">+ Planejar nova viagem</button></div>
+        <div id="trips-content"></div>
       </section>
     </main>
 

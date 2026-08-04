@@ -16,6 +16,17 @@ export function createReservation({ input = {}, selections = {}, plan = {}, trav
   const record = { reservationId, bookingReference, createdAt, destination: input.destination, flightId: flight?.id || null, hotelId: hotel?.id || null, mobilityMode: mobility?.id || selections.mobilityMode, travelerWallet };
   const reservation = {
     ...record, status: "confirmed_sandbox", stage: "active_trip", flight, hotel, mobility,
+    trip: {
+      originCity: input.originCity || null,
+      origin: input.origin || null,
+      destinationAirport: input.destinationAirport || null,
+      destination: input.destination || null,
+      departureDate: input.departureDate || null,
+      returnDate: input.returnDate || null,
+      eventName: input.eventName || null,
+      eventAddress: input.eventAddress || null,
+      travelers: Number(input.travelers) || 1,
+    },
     budget: plan.completeBudget?.requested || null, travelerWallet,
     auditReceipt: { algorithm: "SHA-256", hash: hash(record), timestamp: createdAt },
     supplierExecution: { flightTicketIssued: false, hotelBooked: false, charged: false },
@@ -28,4 +39,16 @@ export function createReservation({ input = {}, selections = {}, plan = {}, trav
 export function getReservation(reservationId) {
   const reservation = reservations.get(reservationId);
   return reservation ? clone(reservation) : null;
+}
+
+export function saveReservation(reservation) {
+  reservations.set(reservation.reservationId, clone(reservation));
+  return clone(reservation);
+}
+
+export function listReservations({ travelerWallet } = {}) {
+  return [...reservations.values()]
+    .filter((item) => !travelerWallet || item.travelerWallet === travelerWallet)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map(clone);
 }

@@ -9,7 +9,7 @@ import { assessOperationalRisk } from "../src/risk-engine.js";
 import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
-import { createReservation, getReservation } from "../src/reservation-engine.js";
+import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
 import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
 
 test("normalizes supported destinations", () => {
@@ -286,4 +286,8 @@ test("creates an auditable sandbox reservation only after explicit selection", (
   assert.match(reservation.bookingReference, /^BIT[A-F0-9]{6}$/);
   assert.equal(reservation.auditReceipt.hash.length, 64);
   assert.equal(getReservation(reservation.reservationId).bookingReference, reservation.bookingReference);
+  saveReservation({ ...reservation, travelerWallet: "GTEST-MY-TRIPS" });
+  const listed = listReservations({ travelerWallet: "GTEST-MY-TRIPS" });
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].trip.destination, "Lisboa");
 });
