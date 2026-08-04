@@ -129,6 +129,18 @@ app.post("/api/protection-sessions/:sessionId/verify", async (req, res, next) =>
   } catch (error) { return next(error); }
 });
 
+app.post("/api/protection-sessions/:sessionId/demo-delay", (req, res, next) => {
+  try {
+    const checkedAt = new Date().toISOString();
+    return res.json(recordProtectionEvent({
+      sessionId: req.params.sessionId,
+      event: "delayed_120",
+      context: req.body?.context,
+      verification: { verified: true, simulated: true, status: "testnet_scenario", delayMinutes: 120, reportedDelayMinutes: 120, checkedAt, source: "BIT Travels Testnet Scenario" },
+    }));
+  } catch (error) { return next(error); }
+});
+
 app.post("/api/protection-sessions/:sessionId/events", async (req, res, next) => {
   try {
     const reportedDelayMinutes = req.body.event === "delayed_240" ? 240 : req.body.event === "delayed_120" ? 120 : req.body.event === "delayed_60" ? 60 : 0;

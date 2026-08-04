@@ -249,6 +249,20 @@ test("does not call Aviationstack without a configured key", async () => {
   assert.equal(result.status, "configuration_pending");
 });
 
+test("retries Aviationstack without the premium date filter on a free plan", async () => {
+  const urls = [];
+  const fetchImpl = async (url) => {
+    urls.push(url);
+    if (urls.length === 1) return { ok: true, json: async () => ({ error: { message: "Your current subscription plan does not support this API function." } }) };
+    return { ok: true, json: async () => ({ data: [{ flight_status: "active", flight: { iata: "IB3167" }, departure: { delay: 125 }, arrival: {} }] }) };
+  };
+  const result = await verifyFlightStatus({ flight: { number: "IB3167", departureAt: "2026-10-25T18:34:00" }, token: "test-key", fetchImpl });
+  assert.equal(urls.length, 2);
+  assert.match(urls[0], /flight_date=/);
+  assert.doesNotMatch(urls[1], /flight_date=/);
+  assert.equal(result.delayMinutes, 125);
+});
+
 test("redeems a voucher once and blocks duplicate redemption", () => {
   const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
   const issued = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });

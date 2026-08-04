@@ -36,9 +36,15 @@ export async function verifyFlightStatus({ flight = {}, reportedDelayMinutes = 0
   const params = new URLSearchParams({ access_key: token, flight_iata: flightNumber, limit: "10" });
   if (flight.departureAt) params.set("flight_date", String(flight.departureAt).slice(0, 10));
   try {
-    const response = await fetchImpl(`${API_URL}?${params}`, { signal: AbortSignal.timeout(10000) });
-    const payload = await response.json();
-    if (!response.ok || payload.error) return { verified: false, status: "provider_error", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: payload.error?.message || `Flight verification returned ${response.status}` };
+    let response = await fetchImpl(`${API_URL}?${params}`, { signal: AbortSignal.timeout(10000) });
+    let payload = await response.json();
+    const planBlocked = payload.error && /subscription plan|not support/i.test(payload.error.message || "");
+    if (planBlocked && params.has("flight_date")) {
+      params.delete("flight_date");
+      response = await fetchImpl(`${API_URL}?${params}`, { signal: AbortSignal.timeout(10000) });
+      payload = await response.json();
+    }
+    if (!response.ok || payload.error) return { verified: false, status: "provider_error", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: "A fonte externa não conseguiu consultar este voo agora" };
     const exact = (payload.data || []).find((item) => String(item.flight?.iata || "").replace(/\s/g, "").toUpperCase() === flightNumber.toUpperCase()) || payload.data?.[0];
     return { ...summarizeFlightVerification(exact, reportedDelayMinutes), checkedAt };
   } catch (error) {

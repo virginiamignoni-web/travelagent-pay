@@ -382,13 +382,14 @@ function renderProtectionState(reservation, protection) {
   const internalReference = reservation.internalReference || reservation.bookingReference;
   const verification = protection?.verification;
   const verificationBanner = verification
-    ? `<div class="flight-verification ${verification.verified ? "verified" : "pending"}"><i></i><div><b>${verification.verified ? `Atraso confirmado externamente · ${verification.delayMinutes} min` : "Verificando status do voo"}</b><span>${verification.verified ? `${verification.source} · ${verification.status}` : `${verification.reason || "Consulta externa em andamento"}. O relato foi registrado e será verificado novamente.`}</span></div><small>${verification.checkedAt ? new Date(verification.checkedAt).toLocaleString() : ""}</small></div>`
+    ? `<div class="flight-verification ${verification.verified ? "verified" : "pending"}"><i></i><div><b>${verification.verified ? `${verification.simulated ? "Cenário demonstrativo" : "Atraso confirmado externamente"} · ${verification.delayMinutes} min` : "Status ainda não confirmado"}</b><span>${verification.verified ? `${verification.source} · ${verification.status}` : "A fonte externa ainda não possui um status confirmável para este voo. O monitoramento continuará ativo."}</span></div><small>${verification.checkedAt ? new Date(verification.checkedAt).toLocaleString() : ""}</small></div>`
     : `<div class="flight-verification idle"><i></i><div><b>Monitoramento preparado</b><span>Relate uma alteração para o agente cruzar o status com a fonte externa.</span></div></div>`;
   protectionContent.innerHTML = `<div class="protection-overview">
     <article class="flight-monitor"><div class="monitor-top"><span>MONITORAMENTO ATIVO</span><b>${protection?.flight?.number || "Voo não emitido"}</b></div><h3>${reservation.trip?.origin || "Origem"} → ${reservation.trip?.destinationAirport || reservation.destination}</h3><p>${protection?.flight?.airline || reservation.flight?.airline || "Companhia pendente"} · referência BIT ${internalReference}</p><strong>${delay}<small>minutos de atraso</small></strong></article>
     <article class="anac-rules"><span>ASSISTÊNCIA · RESOLUÇÃO ANAC 400/2016</span><div class="anac-timeline"><i class="active">Pontual</i><i class="${delay >= 60 ? "active" : ""}">1h<br>Comunicação</i><i class="${delay >= 120 ? "active" : ""}">2h<br>Alimentação</i><i class="${delay >= 240 ? "active" : ""}">4h<br>Reacomodação</i></div><small>Hotel depende de pernoite e localização do passageiro; no domicílio, aplica-se traslado quando cabível.</small></article>
   </div>${verificationBanner}
   <div class="protection-actions"><div><span>RELATO DO PASSAGEIRO · VERIFICAÇÃO EXTERNA</span><h3>Informar situação do voo</h3></div><button data-center-event="on_time">Informar pontual</button><button data-center-event="delayed_60">Relatar atraso 1h</button><button data-center-event="delayed_120">Relatar atraso 2h</button><button data-center-event="delayed_240" data-overnight="true">Relatar atraso 4h + pernoite</button></div>
+  <div class="testnet-demonstration"><div><span>DEMONSTRAÇÃO TRANSPARENTE · TESTNET</span><h3>Executar o ciclo completo de proteção</h3><p>Simula 2h de atraso para demonstrar emissão, notificação e auditoria. Não representa confirmação da companhia nem da Aviationstack.</p></div><button data-demo-delay>Demonstrar atraso de 2h</button></div>
   ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Direitos ativados</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></article>`).join("")}</div>` : ""}
   ${vouchers.length ? `<div class="center-vouchers"><h3>Benefícios emitidos</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>Nenhum benefício necessário</h3><p>O voo está sendo monitorado. Vouchers aparecem aqui quando um gatilho elegível é registrado.</p></div>`}
   <div class="center-audit"><div><span>TRILHA AUDITÁVEL</span><h3>${protection?.ledger?.length || 0} evento(s) registrado(s)</h3></div><code>Session ${protection?.sessionId || "não disponível"}</code><small>Todos os horários são registrados em formato ISO; vouchers incluem hash SHA-256 e referência legal.</small></div>`;
@@ -648,14 +649,15 @@ tripsContent.addEventListener("click", (event) => {
 });
 
 protectionContent.addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-center-event]");
+  const button = event.target.closest("button[data-center-event], button[data-demo-delay]");
   const sessionId = activeReservation?.journeyProtection?.sessionId;
   if (!button || !sessionId) return;
   const originalLabel = button.textContent;
   button.disabled = true;
   button.textContent = "Verificando status...";
   try {
-    const response = await fetch(`/api/protection-sessions/${sessionId}/events`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: button.dataset.centerEvent, context: { overnightRequired: button.dataset.overnight === "true", atHomeCity: false } }) });
+    const endpoint = button.hasAttribute("data-demo-delay") ? "demo-delay" : "events";
+    const response = await fetch(`/api/protection-sessions/${sessionId}/${endpoint}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: button.dataset.centerEvent, context: { overnightRequired: button.dataset.overnight === "true", atHomeCity: false } }) });
     const protection = await response.json();
     if (!response.ok) throw new Error(protection.detail || "Falha ao registrar evento");
     activeReservation.journeyProtection = protection;
