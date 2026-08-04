@@ -14,6 +14,7 @@ import { attachVoucherSettlement, createProtectionSession, decideRecoveryAction,
 import { summarizeFlightVerification, verifyFlightStatus } from "../src/aviationstack.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
 import { buildDemoFlightOffers, createDuffelOrder, summarizeOffer } from "../src/duffel.js";
+import { createPixOffRampService, sandboxMerchantForVoucher } from "../src/pix-offramp.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -215,6 +216,7 @@ test("issues a testnet meal voucher when a flight reaches 120 minutes of delay",
   assert.equal(delayed.status, "assistance_issued");
   assert.equal(delayed.voucher.amount, "15.00");
   assert.equal(delayed.voucher.asset, "USDC");
+  assert.deepEqual(delayed.voucher.faceValue, { amount: "50.00", currency: "BRL" });
   assert.equal(delayed.voucher.network, "stellar:testnet");
   assert.equal(delayed.voucher.status, "issued");
   assert.equal(findProtectionSession(session.sessionId).delayMinutes, 120);
@@ -263,17 +265,29 @@ test("retries Aviationstack without the premium date filter on a free plan", asy
   assert.equal(result.delayMinutes, 125);
 });
 
-test("redeems a voucher once and blocks duplicate redemption", () => {
+test("redeems a voucher through the Brazil Pix sandbox once and blocks duplicate redemption", async () => {
   const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
   const issued = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });
+  const merchant = sandboxMerchantForVoucher(issued.voucher.type);
+  const pixSettlement = await createPixOffRampService().settle({ voucher: issued.voucher, merchantId: merchant.id, merchantCategory: merchant.category });
   const redeemed = redeemVoucher({
     voucherId: issued.voucher.id,
     code: issued.voucher.code,
-    merchantId: "LIS-CAFE-01",
-    merchantCategory: "airport_food",
+    merchantId: merchant.id,
+    merchantCategory: merchant.category,
+    pixSettlement,
   });
   assert.equal(redeemed.status, "redeemed");
+  assert.equal(redeemed.pixSettlement.status, "paid_sandbox");
+  assert.equal(redeemed.pixSettlement.payout.currency, "BRL");
+  assert.match(redeemed.pixSettlement.endToEndId, /^E/);
   assert.throws(() => redeemVoucher({ voucherId: issued.voucher.id, code: issued.voucher.code, merchantCategory: "airport_food" }), /already been redeemed/);
+});
+
+test("rejects a Pix payout to a merchant outside the voucher category", async () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
+  const voucher = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
+  await assert.rejects(() => createPixOffRampService().settle({ voucher, merchantId: "BR-AIRPORT-HOTEL-01", merchantCategory: "airport_hotel" }), /not registered|not eligible/);
 });
 
 test("applies the progressive ANAC assistance thresholds", () => {

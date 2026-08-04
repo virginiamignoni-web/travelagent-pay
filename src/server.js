@@ -16,6 +16,7 @@ import { buildDemoHotels, searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
 import { attachVoucherSettlement, createProtectionSession, decideRecoveryAction, getProtectionSession, linkProtectionServices, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "./voucher-engine.js";
 import { createVoucherSettlementService } from "./stellar-voucher-settlement.js";
+import { createPixOffRampService, faceValueForVoucher, sandboxMerchantForVoucher } from "./pix-offramp.js";
 import { verifyFlightStatus } from "./aviationstack.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
 import { databaseInfo, findVouchers } from "./database.js";
@@ -37,6 +38,7 @@ const voucherSettlementService = createVoucherSettlementService({
   issuerSecret: process.env.VOUCHER_ISSUER_SECRET || agentWalletEnv.STELLAR_SECRET,
   fallbackRecipient: process.env.VOUCHER_DEFAULT_RECIPIENT || agentWalletEnv.STELLAR_RECIPIENT,
 });
+const pixOffRampService = createPixOffRampService();
 
 const app = express();
 app.use(express.json());
@@ -191,9 +193,15 @@ app.post("/api/protection-sessions/:sessionId/recovery-actions/:actionId", (req,
   } catch (error) { return next(error); }
 });
 
-app.post("/api/vouchers/:voucherId/redeem", (req, res, next) => {
+app.post("/api/vouchers/:voucherId/redeem", async (req, res, next) => {
   try {
-    return res.json(redeemVoucher({ voucherId: req.params.voucherId, ...req.body }));
+    const voucher = findVouchers({}).find((item) => item.id === req.params.voucherId);
+    if (!voucher) return res.status(404).json({ error: "Voucher was not found" });
+    const merchant = sandboxMerchantForVoucher(voucher.type);
+    const merchantId = req.body.merchantId || merchant.id;
+    const merchantCategory = req.body.merchantCategory || merchant.category;
+    const pixSettlement = await pixOffRampService.settle({ voucher: { ...voucher, faceValue: voucher.faceValue || faceValueForVoucher(voucher.type) }, merchantId, merchantCategory });
+    return res.json(redeemVoucher({ voucherId: req.params.voucherId, ...req.body, merchantId, merchantCategory, pixSettlement }));
   } catch (error) {
     return next(error);
   }
@@ -215,18 +223,19 @@ app.get("/api/voucher-wallet", (req, res) => {
       bookingReference: storedPnr || reservation?.supplierReferences?.pnr || null,
       issuer: voucher.issuer || { name: "BIT Travels Journey Protection Engine", type: "platform_testnet_demo", airline: reservation?.flight?.airline || null, authenticatedExternalInstruction: false },
       settlement: { fundingSource: "none_demo_credit", ...voucher.settlement },
+      faceValue: voucher.faceValue || faceValueForVoucher(voucher.type),
     };
-    if (normalized.notification) normalized.notification = { ...normalized.notification, title: `${normalized.label} issued`, message: `${normalized.label} for ${normalized.amount} USDC Testnet issued under ${legalBasis}, for flight ${normalized.flightReference} and ${normalized.internalReference ? `BIT booking ${normalized.internalReference}` : "the monitored trip"}${normalized.bookingReference ? ` and PNR ${normalized.bookingReference}` : ""}.` };
+    if (normalized.notification) normalized.notification = { ...normalized.notification, title: `${normalized.label} issued`, message: `${normalized.label} with an illustrative face value of BRL ${normalized.faceValue.amount} issued under ${legalBasis}, for flight ${normalized.flightReference} and ${normalized.internalReference ? `BIT booking ${normalized.internalReference}` : "the monitored trip"}${normalized.bookingReference ? ` and PNR ${normalized.bookingReference}` : ""}.` };
     if (!normalized.settlement.transactionHash) normalized.settlement.note = "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.";
     return normalized;
   });
   const issued = vouchers.filter((item) => item.status === "issued");
   const redeemed = vouchers.filter((item) => item.status === "redeemed");
-  const total = (items) => items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2);
+  const total = (items) => items.reduce((sum, item) => sum + Number(item.faceValue?.amount || 0), 0).toFixed(2);
   res.json({
     network: "stellar:testnet",
     travelerWallet,
-    summary: { count: vouchers.length, availableCount: issued.length, redeemedCount: redeemed.length, issuedUsdc: total(vouchers), availableUsdc: total(issued), redeemedUsdc: total(redeemed) },
+    summary: { count: vouchers.length, availableCount: issued.length, redeemedCount: redeemed.length, issuedBrl: total(vouchers), availableBrl: total(issued), redeemedBrl: total(redeemed) },
     vouchers,
     audit: { generatedAt: new Date().toISOString(), hashAlgorithm: "SHA-256", onChainSettlements: vouchers.filter((item) => item.settlement?.transactionHash).length, disclaimer: "Benefit values are illustrative. New vouchers use a real 0.01 USDC Stellar Testnet microtransfer as on-chain issuance proof; SHA-256 hashes prove record integrity." },
   });

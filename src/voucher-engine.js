@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { findProtectionSession, findVoucher, persistProtectionSession, persistVoucher } from "./database.js";
+import { faceValueForVoucher } from "./pix-offramp.js";
 
 const protectionSessions = new Map();
 const vouchers = new Map();
@@ -35,11 +36,13 @@ function presentVoucher(voucher) {
   const presented = clone(voucher);
   presented.label = rule.label;
   presented.legalBasis = rule.legalBasis;
+  presented.faceValue ||= faceValueForVoucher(presented.type);
   if (presented.notification) {
+    const faceValue = presented.faceValue || faceValueForVoucher(presented.type);
     const bitReference = presented.internalReference && !/não informada/i.test(presented.internalReference) ? `BIT booking ${presented.internalReference}` : "the monitored trip";
     const pnr = presented.bookingReference && !/não informada/i.test(presented.bookingReference) ? ` and PNR ${presented.bookingReference}` : "";
     presented.notification.title = `${rule.label} issued`;
-    presented.notification.message = `${rule.label} for ${presented.amount} USDC Testnet issued under ${rule.legalBasis}, for flight ${presented.flightReference} and ${bitReference}${pnr}.`;
+    presented.notification.message = `${rule.label} with an illustrative face value of BRL ${faceValue.amount} issued under ${rule.legalBasis}, for flight ${presented.flightReference} and ${bitReference}${pnr}.`;
     if (presented.settlement?.transactionHash) presented.notification.message += ` On-chain issuance proof confirmed with a ${presented.settlement.amount} ${presented.settlement.asset} Stellar Testnet microtransfer.`;
   }
   if (presented.settlement && !presented.settlement.transactionHash) presented.settlement.note = "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.";
@@ -55,6 +58,7 @@ function issueVoucher(session, type) {
   const existing = sessionVouchers(session).find((item) => item.type === type);
   if (existing) return existing;
   const rule = BENEFIT_RULES[type];
+  const faceValue = faceValueForVoucher(type);
   const issuedAt = now();
   const id = randomUUID();
   const flightReference = session.flight.number || session.flight.airline || "unidentified flight";
@@ -68,6 +72,7 @@ function issueVoucher(session, type) {
     type,
     amount: rule.amount,
     asset: "USDC",
+    faceValue,
     network: "stellar:testnet",
     issuedAt,
     flightReference,
@@ -85,6 +90,7 @@ function issueVoucher(session, type) {
     label: rule.label,
     amount: rule.amount,
     asset: "USDC",
+    faceValue,
     network: "stellar:testnet",
     status: "issued",
     validFor: rule.validFor,
@@ -108,7 +114,7 @@ function issueVoucher(session, type) {
       status: "delivered",
       deliveredAt: issuedAt,
       title: `${rule.label} issued`,
-      message: `${rule.label} for ${rule.amount} USDC Testnet issued under ${rule.legalBasis}, for flight ${flightReference} and ${reservationMessage}.`,
+      message: `${rule.label} with an illustrative face value of BRL ${faceValue.amount} issued under ${rule.legalBasis}, for flight ${flightReference} and ${reservationMessage}.`,
     },
     settlement: {
       mode: "testnet_voucher_demo",
@@ -286,7 +292,7 @@ export function linkProtectionServices({ sessionId, linkedServices = {} } = {}) 
   return publicSession(session);
 }
 
-export function redeemVoucher({ voucherId, code, merchantId, merchantCategory } = {}) {
+export function redeemVoucher({ voucherId, code, merchantId, merchantCategory, pixSettlement } = {}) {
   const voucher = vouchers.get(voucherId) || findVoucher(voucherId);
   if (!voucher) throw Object.assign(new Error("Voucher was not found"), { statusCode: 404 });
   vouchers.set(voucherId, voucher);
@@ -294,9 +300,11 @@ export function redeemVoucher({ voucherId, code, merchantId, merchantCategory } 
   if (voucher.code !== String(code || "").toUpperCase()) throw Object.assign(new Error("Invalid voucher code"), { statusCode: 403 });
   if (!voucher.validFor.includes(merchantCategory)) throw Object.assign(new Error("Merchant category is not eligible for this voucher"), { statusCode: 403 });
   if (new Date(voucher.expiresAt) <= new Date()) throw Object.assign(new Error("Voucher has expired"), { statusCode: 410 });
+  if (!pixSettlement || pixSettlement.status !== "paid_sandbox" || !pixSettlement.endToEndId) throw Object.assign(new Error("Confirmed Pix sandbox settlement is required"), { statusCode: 409 });
   const at = now();
-  voucher.status = "redeemed"; voucher.redeemedAt = at; voucher.redeemedBy = merchantId || "demo-airport-merchant"; voucher.merchantCategory = merchantCategory;
-  voucher.audit.push({ at, event: "voucher_redeemed", actor: voucher.redeemedBy, merchantCategory });
+  voucher.faceValue ||= faceValueForVoucher(voucher.type);
+  voucher.status = "redeemed"; voucher.redeemedAt = at; voucher.redeemedBy = merchantId; voucher.merchantCategory = merchantCategory; voucher.pixSettlement = clone(pixSettlement);
+  voucher.audit.push({ at, event: "voucher_redeemed_pix_sandbox", actor: voucher.redeemedBy, merchantCategory, endToEndId: pixSettlement.endToEndId, pixAuditHash: pixSettlement.auditHash });
   persistVoucher(voucher);
   const session = [...protectionSessions.values()].find((item) => item.voucherIds.includes(voucherId)) || (voucher.protectionSessionId ? findProtectionSession(voucher.protectionSessionId) : null);
   if (session) protectionSessions.set(session.sessionId, session);

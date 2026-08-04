@@ -140,12 +140,12 @@ function renderPlan(plan) {
   const protectionVouchers = protection?.vouchers || (voucher ? [voucher] : []);
   const voucherCard = (item) => `<article class="voucher-card ${item.status}">
           <div class="voucher-brand"><b>BIT TRAVELS</b><span>PROGRAMMABLE ASSISTANCE</span></div>
-          <div class="voucher-value"><strong>${item.amount}</strong><span>${item.asset} · TESTNET</span></div>
+          <div class="voucher-value"><strong>R$ ${item.faceValue?.amount || "0.00"}</strong><span>BRL · BRAZIL</span></div>
           <h4>${item.label}</h4><p>Valid for 24 hours · controlled merchant categories.</p>
           <div class="voucher-code" aria-label="Redemption code"><i></i><i></i><i></i><i></i><b>${item.code}</b></div>
           <div class="voucher-notification"><b>Notification delivered</b><span>${item.notification.message}</span><small>${new Date(item.notification.deliveredAt).toLocaleString()}</small></div>
           <div class="audit-proof"><span><b>Audit hash · ${item.auditReceipt.algorithm}</b><code>${item.auditReceipt.hash}</code></span><span><b>Timestamp</b><code>${new Date(item.auditReceipt.timestamp).toISOString()}</code></span><span><b>Stellar transaction hash</b><code>${item.settlement.transactionHash || "Pending on-chain settlement"}</code></span></div>
-          ${item.status === "issued" ? `<button type="button" data-redeem-voucher="${item.id}" data-voucher-code="${item.code}" data-voucher-type="${item.type}">Simulate authorized redemption</button>` : `<div class="redeemed-stamp">✓ Redeemed by ${item.redeemedBy} · duplicate use blocked</div>`}
+          ${item.status === "issued" ? `<button type="button" data-redeem-voucher="${item.id}" data-voucher-code="${item.code}" data-voucher-type="${item.type}">Redeem with Pix sandbox</button>` : `<div class="redeemed-stamp">✓ Pix sandbox paid · ${item.pixSettlement?.endToEndId || "reference unavailable"}</div>`}
           <small>${item.settlement.note}</small>
         </article>`;
   const protectionCard = protection
@@ -376,13 +376,14 @@ async function renderMyTrips() {
 
 function protectionVoucherCard(voucher) {
   return `<article class="center-voucher">
-    <div class="center-voucher-heading"><span>${voucher.label}</span><strong>${voucher.amount} <small>${voucher.asset}</small></strong></div>
+    <div class="center-voucher-heading"><span>${voucher.label}</span><strong>R$ ${voucher.faceValue?.amount || "0.00"} <small>BRL</small></strong></div>
     <div class="center-voucher-facts">
       <span><b>Network</b>Stellar Testnet · Issued</span>
       <span><b>Flight</b>${voucher.flightReference || "Unavailable"}</span>
       <span><b>Bookings</b>BIT ${voucher.internalReference || "unavailable"} · PNR ${voucher.bookingReference || "unavailable"}</span>
     </div>
     <div class="center-voucher-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm || "SHA-256"}</b><code>${voucher.auditReceipt?.hash || "Hash pending"}</code>${voucher.settlement?.transactionHash ? `<b>Stellar microsettlement · ${voucher.settlement.amount} ${voucher.settlement.asset}</b><a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open in Stellar Expert ↗</span></a>` : `<b>Stellar microsettlement pending</b>`}</div>
+    ${voucher.pixSettlement ? `<div class="pix-proof"><b>PIX SANDBOX · PAID</b><span>${voucher.pixSettlement.merchant.name}</span><code>${voucher.pixSettlement.endToEndId}</code><small>R$ ${voucher.pixSettlement.payout.amount} · no real BRL moved</small></div>` : ""}
     <small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Category-controlled use"}</small>
   </article>`;
 }
@@ -430,14 +431,14 @@ async function openProtectionCenter(reservationId = null) {
 
 function walletVoucherCard(voucher) {
   return `<article class="wallet-voucher ${voucher.status}">
-    <div class="wallet-voucher-top"><span>${voucher.label}</span><strong>${voucher.amount} <small>${voucher.asset}</small></strong><b>${voucher.status === "redeemed" ? "REDEEMED" : "AVAILABLE"}</b></div>
+    <div class="wallet-voucher-top"><span>${voucher.label}</span><strong>R$ ${voucher.faceValue?.amount || "0.00"} <small>BRL</small></strong><b>${voucher.status === "redeemed" ? "REDEEMED" : "AVAILABLE"}</b></div>
     <div class="wallet-voucher-summary">
       <span><b>Network and issuance</b>Stellar Testnet · Issued under ${voucher.legalBasis || "the applicable passenger assistance rule"}</span>
       <span><b>Flight</b>${voucher.flightReference || "Unavailable"}</span>
       <span class="booking-references"><i><b>BIT Travels booking</b>${voucher.internalReference || "Unavailable"}</i><i><b>Airline PNR</b>${voucher.bookingReference || "Unavailable"}</i></span>
     </div>
     <div class="wallet-voucher-meta"><span><b>Valid until</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Merchant categories</b>${voucher.validFor.join(" · ")}</span><span><b>Responsible issuer</b>${voucher.issuer?.name || "Unidentified"}</span><span><b>Airline linked to flight</b>${voucher.issuer?.airline || "Unavailable"}</span></div>
-    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar microsettlement${voucher.settlement?.onChain ? ` · ${voucher.settlement.amount} ${voucher.settlement.asset}` : ""}</b>${voucher.settlement?.transactionHash ? `<a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open transaction ↗</span></a>` : `<code>Not performed · historical off-chain demonstration credit</code>`}<small>${voucher.settlement?.note || ""}</small></div>
+    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar microsettlement${voucher.settlement?.onChain ? ` · ${voucher.settlement.amount} ${voucher.settlement.asset}` : ""}</b>${voucher.settlement?.transactionHash ? `<a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open transaction ↗</span></a>` : `<code>Not performed · historical off-chain demonstration credit</code>`}<small>${voucher.settlement?.note || ""}</small>${voucher.pixSettlement ? `<b>Pix off-ramp · sandbox paid</b><code>${voucher.pixSettlement.endToEndId}</code><span>R$ ${voucher.pixSettlement.payout.amount} to ${voucher.pixSettlement.merchant.name}</span><small>${voucher.pixSettlement.note}</small>` : ""}</div>
   </article>`;
 }
 
@@ -452,7 +453,7 @@ async function openVoucherWallet() {
     const report = await response.json();
     if (!response.ok) throw new Error(report.detail || "The wallet could not be loaded");
     activeWalletReport = report;
-    walletContent.innerHTML = `<div class="wallet-summary"><article><span>AVAILABLE BALANCE</span><strong>${report.summary.availableUsdc}<small>USDC Testnet</small></strong></article><article><span>ISSUED</span><strong>${report.summary.count}<small>vouchers</small></strong></article><article><span>REDEEMED</span><strong>${report.summary.redeemedUsdc}<small>USDC Testnet</small></strong></article></div>
+    walletContent.innerHTML = `<div class="wallet-summary"><article><span>AVAILABLE BENEFITS</span><strong>R$ ${report.summary.availableBrl}<small>BRL</small></strong></article><article><span>ISSUED</span><strong>${report.summary.count}<small>vouchers</small></strong></article><article><span>REDEEMED</span><strong>R$ ${report.summary.redeemedBrl}<small>BRL</small></strong></article></div>
       ${report.vouchers.length ? `<div class="wallet-vouchers">${report.vouchers.map(walletVoucherCard).join("")}</div>` : `<div class="empty-wallet"><h3>No vouchers issued</h3><p>Eligible benefits will appear here after an event is recorded in the Protection Center.</p></div>`}
       <section class="audit-center"><div class="audit-center-heading"><div><span>CONSOLIDATED AUDIT</span><h3>Verifiable records</h3></div><button type="button" data-export-audit>Export JSON report</button></div><div class="audit-stats"><span><b>${report.audit.hashAlgorithm}</b>integrity algorithm</span><span><b>${report.audit.onChainSettlements}</b>on-chain settlements</span><span><b>${new Date(report.audit.generatedAt).toLocaleString()}</b>report generated</span></div><p>${report.audit.disclaimer}</p></section>`;
   } catch (error) { walletContent.innerHTML = `<div class="empty-wallet"><h3>Wallet unavailable</h3><p>${error.message}</p></div>`; }
@@ -548,7 +549,7 @@ planNode.addEventListener("click", async (event) => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           code: redeemButton.dataset.voucherCode,
-          merchantId: redeemButton.dataset.voucherType === "hotel" ? "LIS-AIRPORT-HOTEL-01" : redeemButton.dataset.voucherType === "transport" ? "LIS-TRANSFER-01" : "LIS-AIRPORT-CAFE-01",
+          merchantId: redeemButton.dataset.voucherType === "hotel" ? "BR-AIRPORT-HOTEL-01" : redeemButton.dataset.voucherType === "transport" ? "BR-AIRPORT-MOBILITY-01" : "BR-AIRPORT-FOOD-01",
           merchantCategory: redeemButton.dataset.voucherType === "hotel" ? "airport_hotel" : redeemButton.dataset.voucherType === "transport" ? "airport_transport" : "airport_food",
         }),
       });

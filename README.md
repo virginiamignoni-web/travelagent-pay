@@ -30,7 +30,9 @@ The controlled-autonomy layer creates a server-side approval session from the co
 
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
-Passenger-assistance vouchers also have an on-chain issuance proof. When a new meal, transport, or accommodation voucher is created, the Testnet airline treasury sends a real `0.01 USDC` microtransfer to the connected traveler wallet and stores the Stellar transaction hash, ledger, source, destination, timestamp, and explorer link with the voucher. The displayed `15/25/80 USDC` benefit values remain illustrative; only the clearly labeled `0.01 USDC` proof amount is transferred.
+Passenger-assistance vouchers also have an on-chain issuance proof. When a new meal, transport, or accommodation voucher is created, the Testnet airline treasury sends a real `0.01 USDC` microtransfer to the connected traveler wallet and stores the Stellar transaction hash, ledger, source, destination, timestamp, and explorer link with the voucher. This microtransfer is only an issuance proof and is independent from the voucher's illustrative BRL face value.
+
+For the Brazil-first redemption scenario, benefit face values are presented in BRL: `R$ 50` for meals, `R$ 80` for airport transport, and `R$ 400` for accommodation. A category-matched sandbox merchant redeems the voucher, the off-ramp simulator records an indicative USDC/BRL quote, and a simulated Pix payout produces an auditable sandbox `endToEndId`. No BRL moves in this mode. Production requires a licensed PSP/off-ramp adapter, merchant onboarding, KYC/KYB, real quotes, and confirmed Pix settlement before redemption is finalized.
 
 ## Why it exists
 

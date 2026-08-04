@@ -536,6 +536,10 @@ footer {
 .wallet-proof a, .center-voucher-proof a { display: grid; gap: 4px; color: #003366; text-decoration: none; }
 .wallet-proof a span, .center-voucher-proof a span { color: #003366; font-size: 9px; font-weight: 800; }
 .center-voucher-proof a code { padding: 0; }
+.pix-proof { position: relative; z-index: 1; display: grid !important; gap: 5px; margin-top: 10px; padding: 11px; border: 1px solid rgba(253,185,19,.55); border-radius: 9px; background: rgba(253,185,19,.12); }
+.pix-proof b { color: #FDB913; font-size: 9px; letter-spacing: .7px; }
+.pix-proof span, .pix-proof small { color: #FFFFFF; font-size: 9px; }
+.pix-proof code { overflow-wrap: anywhere; color: #FFFFFF; font-size: 10px; }
 
 @media(max-width:1000px) {
   .wallet-vouchers { grid-template-columns: 1fr; }
