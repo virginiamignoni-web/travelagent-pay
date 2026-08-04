@@ -12,7 +12,9 @@ export function createReservation({ input = {}, selections = {}, plan = {}, trav
   const flight = (plan.flightSearch?.offers || []).find((item) => item.id === selections.flightId) || plan.decision?.primaryFlight || null;
   const hotel = (plan.hotelSearch?.hotels || []).find((item) => item.id === selections.hotelId) || null;
   const mobility = (plan.mobility?.modes || []).find((item) => item.id === selections.mobilityMode) || null;
-  const record = { reservationId, bookingReference, createdAt, destination: input.destination, flightId: flight?.id || null, hotelId: hotel?.id || null, mobilityMode: mobility?.id || selections.mobilityMode, travelerWallet };
+  const internalReference = bookingReference;
+  const supplierReferences = { pnr: null, duffelOrderId: null, ticketNumbers: [] };
+  const record = { reservationId, bookingReference, internalReference, supplierReferences, createdAt, destination: input.destination, flightId: flight?.id || null, hotelId: hotel?.id || null, mobilityMode: mobility?.id || selections.mobilityMode, travelerWallet };
   const reservation = {
     ...record, status: "confirmed_sandbox", stage: "active_trip", flight, hotel, mobility,
     trip: {
@@ -29,7 +31,7 @@ export function createReservation({ input = {}, selections = {}, plan = {}, trav
     budget: plan.completeBudget?.requested || null, travelerWallet,
     auditReceipt: { algorithm: "SHA-256", hash: hash(record), timestamp: createdAt },
     supplierExecution: { flightTicketIssued: false, hotelBooked: false, charged: false },
-    notice: "Reserva demonstrativa confirmada em sandbox. Nenhum bilhete, quarto ou cobrança real foi emitido junto a fornecedores.",
+    notice: "Viagem demonstrativa confirmada em sandbox. O código BIT é uma referência interna; nenhum PNR, Duffel Order, bilhete, quarto ou cobrança real foi emitido junto a fornecedores.",
   };
   return persistReservation(reservation);
 }

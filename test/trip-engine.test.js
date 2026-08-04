@@ -284,6 +284,8 @@ test("creates an auditable sandbox reservation only after explicit selection", (
   assert.equal(reservation.status, "confirmed_sandbox");
   assert.equal(reservation.supplierExecution.charged, false);
   assert.match(reservation.bookingReference, /^BIT[A-F0-9]{6}$/);
+  assert.equal(reservation.internalReference, reservation.bookingReference);
+  assert.deepEqual(reservation.supplierReferences, { pnr: null, duffelOrderId: null, ticketNumbers: [] });
   assert.equal(reservation.auditReceipt.hash.length, 64);
   assert.equal(getReservation(reservation.reservationId).bookingReference, reservation.bookingReference);
   saveReservation({ ...reservation, travelerWallet: "GTEST-MY-TRIPS" });

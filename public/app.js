@@ -265,9 +265,11 @@ function openReservationReview() {
 function tripCard(reservation) {
   const trip = reservation.trip || {};
   const wallet = reservation.travelerWallet ? shortAddress(reservation.travelerWallet) : "Não conectada";
+  const internalReference = reservation.internalReference || reservation.bookingReference;
+  const supplierReferences = reservation.supplierReferences || { pnr: null, duffelOrderId: null, ticketNumbers: [] };
   return `<article class="active-trip-card">
     <div class="trip-status"><span>VIAGEM ATIVA · SANDBOX</span><b>Monitoramento preparado</b></div>
-    <div class="trip-title"><div><h3>${trip.destination || reservation.destination}</h3><p>${trip.eventName || "Viagem BIT Travels"}</p></div><strong>${reservation.bookingReference}</strong></div>
+    <div class="trip-title"><div><h3>${trip.destination || reservation.destination}</h3><p>${trip.eventName || "Viagem BIT Travels"}</p></div><div class="internal-reference"><span>REFERÊNCIA INTERNA BIT</span><strong>${internalReference}</strong></div></div>
     <div class="trip-route"><b>${trip.origin || "Origem"}</b><i>→</i><b>${trip.destinationAirport || trip.destination || "Destino"}</b><span>${trip.departureDate || "Data pendente"} — ${trip.returnDate || "Data pendente"}</span></div>
     <div class="trip-details">
       <div><span>Voo</span><b>${reservation.flight?.airline || "Em seleção comercial"}</b><small>${reservation.flight?.flightNumber || "Sem bilhete emitido"}</small></div>
@@ -275,6 +277,7 @@ function tripCard(reservation) {
       <div><span>Mobilidade</span><b>${reservation.mobility?.label || "A definir"}</b><small>${reservation.mobility ? `${reservation.mobility.estimatedMinutes} min estimados` : "Plano pendente"}</small></div>
       <div><span>Wallet</span><b>${wallet}</b><small>Stellar Testnet</small></div>
     </div>
+    <div class="supplier-references"><div><span>PNR DA COMPANHIA</span><b>${supplierReferences.pnr || "Não emitido"}</b></div><div><span>DUFFEL ORDER ID</span><b>${supplierReferences.duffelOrderId || "Não criado"}</b></div><div><span>BILHETE(S)</span><b>${supplierReferences.ticketNumbers?.length ? supplierReferences.ticketNumbers.join(" · ") : "Não emitido"}</b></div></div>
     <div class="trip-audit"><span><b>Comprovante auditável · SHA-256</b><code>${reservation.auditReceipt.hash}</code></span><span><b>Confirmada em</b><code>${new Date(reservation.createdAt).toLocaleString()}</code></span></div>
     <div class="trip-actions"><button type="button" data-trip-detail="${reservation.reservationId}">Ver detalhes da viagem</button><button type="button" disabled>Central de proteção · próxima camada</button></div>
     <div class="trip-detail-panel hidden" data-trip-panel="${reservation.reservationId}"><p>${reservation.notice}</p><ul><li>Nenhuma cobrança real realizada.</li><li>Monitoramento criado após confirmação.</li><li>Alterações futuras exigem aprovação explícita.</li></ul></div>
@@ -439,7 +442,7 @@ reservationReview.addEventListener("click", async (event) => {
     activePlan.reservation = reservation;
     activePlan.approvalQueue = reservation.approvalQueue;
     activePlan.journeyProtection = reservation.journeyProtection;
-    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · SANDBOX</span><h2>Reserva ${reservation.bookingReference} confirmada</h2><p>${reservation.notice}</p><div><b>Destino</b><strong>${reservation.destination}</strong></div><div><b>Status</b><strong>Monitoramento preparado</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><button type="button" data-open-trips>Abrir Minhas viagens →</button><small>A viagem agora está disponível com wallet, comprovante e proteção preparada.</small></div>`;
+    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · SANDBOX</span><h2>Viagem ${reservation.internalReference || reservation.bookingReference} confirmada</h2><p>${reservation.notice}</p><div><b>Referência interna BIT</b><strong>${reservation.internalReference || reservation.bookingReference}</strong></div><div><b>PNR da companhia</b><strong>Não emitido</strong></div><div><b>Duffel Order ID</b><strong>Não criado</strong></div><div><b>Bilhete</b><strong>Não emitido</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><button type="button" data-open-trips>Abrir Minhas viagens →</button><small>A viagem agora está disponível com wallet, comprovante e proteção preparada.</small></div>`;
   } catch (error) {
     button.disabled = false;
     button.textContent = "Confirmar reserva demonstrativa →";

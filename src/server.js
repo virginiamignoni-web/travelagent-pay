@@ -60,7 +60,7 @@ app.post("/api/reservations", (req, res, next) => {
     const travelerWallet = req.body.travelerWallet || req.header("x-traveler-wallet") || null;
     const reservation = createReservation({ ...req.body, travelerWallet });
     const primaryFlight = reservation.flight || req.body.plan?.decision?.primaryFlight;
-    const sessionInput = { ...req.body.input, bookingReference: reservation.bookingReference, travelerWallet };
+    const sessionInput = { ...req.body.input, bookingReference: reservation.supplierReferences?.pnr || null, internalReference: reservation.internalReference, travelerWallet };
     reservation.approvalQueue = createApprovalSession({ input: sessionInput, contingencyPlan: req.body.plan?.contingencyPlan, decision: req.body.plan?.decision });
     reservation.journeyProtection = createProtectionSession({ input: sessionInput, primaryFlight });
     return res.status(201).json(saveReservation(reservation));
