@@ -16,6 +16,7 @@ import { searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
 import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
+import { databaseInfo } from "./database.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -36,7 +37,7 @@ app.get("/vendor/freighter-api.js", (_req, res) => {
 app.use(express.static(join(here, "..", "public")));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN) });
+  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), database: databaseInfo() });
 });
 
 app.post("/api/trip-preview", (req, res) => {

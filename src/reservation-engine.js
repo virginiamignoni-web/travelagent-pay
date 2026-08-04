@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-
-const reservations = new Map();
+import { findReservation, findReservations, persistReservation } from "./database.js";
 
 function clone(value) { return structuredClone(value); }
 function hash(record) { return createHash("sha256").update(JSON.stringify(record)).digest("hex"); }
@@ -32,23 +31,18 @@ export function createReservation({ input = {}, selections = {}, plan = {}, trav
     supplierExecution: { flightTicketIssued: false, hotelBooked: false, charged: false },
     notice: "Reserva demonstrativa confirmada em sandbox. Nenhum bilhete, quarto ou cobrança real foi emitido junto a fornecedores.",
   };
-  reservations.set(reservationId, reservation);
-  return clone(reservation);
+  return persistReservation(reservation);
 }
 
 export function getReservation(reservationId) {
-  const reservation = reservations.get(reservationId);
+  const reservation = findReservation(reservationId);
   return reservation ? clone(reservation) : null;
 }
 
 export function saveReservation(reservation) {
-  reservations.set(reservation.reservationId, clone(reservation));
-  return clone(reservation);
+  return persistReservation(reservation);
 }
 
 export function listReservations({ travelerWallet } = {}) {
-  return [...reservations.values()]
-    .filter((item) => !travelerWallet || item.travelerWallet === travelerWallet)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .map(clone);
+  return findReservations({ travelerWallet }).map(clone);
 }

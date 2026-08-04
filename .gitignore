@@ -4,3 +4,6 @@ node_modules/
 work/
 npm-debug.log*
 .DS_Store
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
