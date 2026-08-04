@@ -448,10 +448,10 @@ footer {
   justify-content: center;
   gap: 8px;
   width: auto;
-  min-width: 96px;
-  min-height: 34px;
+  min-width: 82px;
+  min-height: 30px;
   margin: 0;
-  padding: 7px 12px;
+  padding: 6px 10px;
   border: 1px solid rgba(0,51,102,.12);
   border-radius: 999px;
   background: #FFF8DF;
@@ -462,17 +462,33 @@ footer {
 }
 .option-choice input[type="radio"] {
   flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
+  appearance: none;
+  width: 16px !important;
+  min-width: 16px;
+  max-width: 16px;
+  height: 16px !important;
+  min-height: 16px;
+  max-height: 16px;
   margin: 0;
   padding: 0;
-  accent-color: #003366;
+  border: 1.5px solid #7A8796;
+  border-radius: 50%;
+  background: #FFFFFF;
   box-shadow: none;
 }
+.option-choice input[type="radio"]:checked { border: 5px solid #003366; }
 .flight-card.selectable-option { min-height: 116px; padding: 22px 142px 18px 0 !important; }
 .flight-card .option-choice { top: 50%; right: 14px; transform: translateY(-50%); }
-.hotel-grid .selectable-option, .mobility-card.selectable-option { padding: 54px 14px 14px !important; }
-.hotel-grid .option-choice, .mobility-card .option-choice { top: 12px; right: 12px; }
+.hotel-grid .selectable-option { padding: 50px 14px 14px !important; }
+.hotel-grid .option-choice { top: 12px; right: 12px; }
+.mobility-card.selectable-option { padding: 16px !important; }
+.mobility-card .option-choice {
+  position: static;
+  grid-column: 1 / -1;
+  justify-self: end;
+  margin-top: 7px;
+  transform: none;
+}
 
 .center-vouchers { grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 16px; }
 .center-voucher { padding: 20px; border-radius: 16px; box-shadow: 0 14px 30px rgba(0,51,102,.14); }

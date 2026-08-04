@@ -249,10 +249,11 @@ function renderPlan(plan) {
   const mobilityCards = mobility?.modes?.length
     ? `<div class="mobility-results">
         <div class="mobility-heading"><div><span>MOBILITY PROTECTION</span><h4>${mobility.recommendation}</h4></div><strong>≤ ${mobility.maxCommuteMinutes} min</strong></div>
-        <div class="mobility-grid">${mobility.modes.map((mode) => `<article class="mobility-card selectable-option ${mode.id === mobility.recommendedMode ? "recommended" : ""}"><label class="option-choice"><input type="radio" name="selectedMobility" value="${mode.id}" ${mode.id === mobility.recommendedMode ? "checked" : ""}> Select</label>
+        <div class="mobility-grid">${mobility.modes.map((mode) => `<article class="mobility-card selectable-option ${mode.id === mobility.recommendedMode ? "recommended" : ""}">
           <div><b>${mode.label}</b>${mode.id === mobility.recommendedMode ? "<em>Recommended</em>" : ""}</div>
           <strong>${mode.estimatedMinutes} min</strong>
           <small>EUR ${mode.estimatedTripCostEur.toFixed(2)} trip estimate · ${mode.emissions} emissions · ${mode.withinLimit ? "within limit" : "over limit"}</small>
+          <label class="option-choice"><input type="radio" name="selectedMobility" value="${mode.id}" ${mode.id === mobility.recommendedMode ? "checked" : ""}> Select</label>
         </article>`).join("")}</div>
         <small>${mobility.basis}. ${mobility.disclaimer}</small>
       </div>`
@@ -681,7 +682,7 @@ protectionContent.addEventListener("click", async (event) => {
   if (!button || !sessionId) return;
   const originalLabel = button.textContent;
   button.disabled = true;
-  button.textContent = "Verificando status...";
+  button.textContent = "Checking flight status...";
   try {
     const endpoint = button.hasAttribute("data-demo-delay") ? "demo-delay" : "events";
     const response = await fetch(`/api/protection-sessions/${sessionId}/${endpoint}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: button.dataset.centerEvent, context: { overnightRequired: button.dataset.overnight === "true", atHomeCity: false } }) });
