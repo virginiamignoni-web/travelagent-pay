@@ -71,6 +71,10 @@ const tripsNav = document.querySelector("#trips-nav");
 const plannerSection = document.querySelector("#planner");
 const journeyProgress = document.querySelector(".journey-progress");
 const hero = document.querySelector(".hero");
+const protectionNav = document.querySelector("#protection-nav");
+const protectionCenter = document.querySelector("#protection-center");
+const protectionContent = document.querySelector("#protection-content");
+let activeReservation = null;
 
 let tripInput;
 
@@ -279,7 +283,7 @@ function tripCard(reservation) {
     </div>
     <div class="supplier-references"><div><span>PNR DA COMPANHIA</span><b>${supplierReferences.pnr || "Não emitido"}</b></div><div><span>DUFFEL ORDER ID</span><b>${supplierReferences.duffelOrderId || "Não criado"}</b></div><div><span>BILHETE(S)</span><b>${supplierReferences.ticketNumbers?.length ? supplierReferences.ticketNumbers.join(" · ") : "Não emitido"}</b></div></div>
     <div class="trip-audit"><span><b>Comprovante auditável · SHA-256</b><code>${reservation.auditReceipt.hash}</code></span><span><b>Confirmada em</b><code>${new Date(reservation.createdAt).toLocaleString()}</code></span></div>
-    <div class="trip-actions"><button type="button" data-trip-detail="${reservation.reservationId}">Ver detalhes da viagem</button><button type="button" disabled>Central de proteção · próxima camada</button></div>
+    <div class="trip-actions"><button type="button" data-trip-detail="${reservation.reservationId}">Ver detalhes da viagem</button><button type="button" data-open-protection="${reservation.reservationId}">Abrir Central de Proteção</button></div>
     <div class="trip-detail-panel hidden" data-trip-panel="${reservation.reservationId}"><p>${reservation.notice}</p><ul><li>Nenhuma cobrança real realizada.</li><li>Monitoramento criado após confirmação.</li><li>Alterações futuras exigem aprovação explícita.</li></ul></div>
   </article>`;
 }
@@ -290,6 +294,7 @@ async function renderMyTrips() {
   plannerSection.classList.add("hidden");
   reservationStage.classList.add("hidden");
   myTrips.classList.remove("hidden");
+  protectionCenter.classList.add("hidden");
   document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === tripsNav));
   tripsContent.innerHTML = `<div class="trips-loading">Carregando suas viagens…</div>`;
   const query = connectedWallet ? `?travelerWallet=${encodeURIComponent(connectedWallet.address)}` : "";
@@ -306,8 +311,46 @@ async function renderMyTrips() {
   myTrips.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function protectionVoucherCard(voucher) {
+  return `<article class="center-voucher"><div><span>${voucher.label}</span><strong>${voucher.amount} ${voucher.asset}</strong></div><p>${voucher.notification?.message || voucher.legalBasis}</p><code>${voucher.auditReceipt?.hash || "Hash pendente"}</code><small>${voucher.status === "redeemed" ? `Resgatado por ${voucher.redeemedBy}` : "Emitido · Testnet · uso por categoria"}</small></article>`;
+}
+
+function renderProtectionState(reservation, protection) {
+  const delay = protection?.delayMinutes || 0;
+  const vouchers = protection?.vouchers || [];
+  const internalReference = reservation.internalReference || reservation.bookingReference;
+  protectionContent.innerHTML = `<div class="protection-overview">
+    <article class="flight-monitor"><div class="monitor-top"><span>MONITORAMENTO ATIVO</span><b>${protection?.flight?.number || "Voo não emitido"}</b></div><h3>${reservation.trip?.origin || "Origem"} → ${reservation.trip?.destinationAirport || reservation.destination}</h3><p>${protection?.flight?.airline || reservation.flight?.airline || "Companhia pendente"} · referência BIT ${internalReference}</p><strong>${delay}<small>minutos de atraso</small></strong></article>
+    <article class="anac-rules"><span>ASSISTÊNCIA · RESOLUÇÃO ANAC 400/2016</span><div class="anac-timeline"><i class="active">Pontual</i><i class="${delay >= 60 ? "active" : ""}">1h<br>Comunicação</i><i class="${delay >= 120 ? "active" : ""}">2h<br>Alimentação</i><i class="${delay >= 240 ? "active" : ""}">4h<br>Reacomodação</i></div><small>Hotel depende de pernoite e localização do passageiro; no domicílio, aplica-se traslado quando cabível.</small></article>
+  </div>
+  <div class="protection-actions"><div><span>SIMULAÇÃO OPERACIONAL · TESTNET</span><h3>Registrar situação do voo</h3></div><button data-center-event="on_time">Pontual</button><button data-center-event="delayed_60">Atraso 1h</button><button data-center-event="delayed_120">Atraso 2h</button><button data-center-event="delayed_240" data-overnight="true">Atraso 4h + pernoite</button></div>
+  ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Direitos ativados</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></article>`).join("")}</div>` : ""}
+  ${vouchers.length ? `<div class="center-vouchers"><h3>Benefícios emitidos</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>Nenhum benefício necessário</h3><p>O voo está sendo monitorado. Vouchers aparecem aqui quando um gatilho elegível é registrado.</p></div>`}
+  <div class="center-audit"><div><span>TRILHA AUDITÁVEL</span><h3>${protection?.ledger?.length || 0} evento(s) registrado(s)</h3></div><code>Session ${protection?.sessionId || "não disponível"}</code><small>Todos os horários são registrados em formato ISO; vouchers incluem hash SHA-256 e referência legal.</small></div>`;
+}
+
+async function openProtectionCenter(reservationId = null) {
+  const response = await fetch("/api/reservations");
+  const payload = await response.json();
+  activeReservation = payload.reservations.find((item) => item.reservationId === reservationId) || payload.reservations[0] || null;
+  hero.classList.add("hidden"); journeyProgress.classList.add("hidden"); plannerSection.classList.add("hidden"); reservationStage.classList.add("hidden"); myTrips.classList.add("hidden");
+  protectionCenter.classList.remove("hidden");
+  document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === protectionNav));
+  if (!activeReservation) protectionContent.innerHTML = `<div class="empty-trips"><h3>Nenhuma viagem ativa</h3><p>Confirme uma viagem antes de ativar a proteção.</p></div>`;
+  else {
+    let protection = activeReservation.journeyProtection;
+    if (protection?.sessionId) {
+      const stateResponse = await fetch(`/api/protection-sessions/${protection.sessionId}`);
+      if (stateResponse.ok) protection = await stateResponse.json();
+    }
+    renderProtectionState(activeReservation, protection);
+  }
+  protectionCenter.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function showPlanner() {
   myTrips.classList.add("hidden");
+  protectionCenter.classList.add("hidden");
   hero.classList.remove("hidden");
   journeyProgress.classList.remove("hidden");
   plannerSection.classList.remove("hidden");
@@ -451,17 +494,35 @@ reservationReview.addEventListener("click", async (event) => {
 });
 
 tripsNav.addEventListener("click", (event) => { event.preventDefault(); renderMyTrips(); });
+protectionNav.addEventListener("click", (event) => { event.preventDefault(); openProtectionCenter(); });
 document.querySelector("#back-to-planner").addEventListener("click", showPlanner);
+document.querySelector("#back-to-trips").addEventListener("click", renderMyTrips);
 reservationReview.addEventListener("click", (event) => {
   if (event.target.closest("button[data-open-trips]")) renderMyTrips();
 });
 tripsContent.addEventListener("click", (event) => {
   if (event.target.closest("button[data-back-planner]")) return showPlanner();
+  const protectionButton = event.target.closest("button[data-open-protection]");
+  if (protectionButton) return openProtectionCenter(protectionButton.dataset.openProtection);
   const button = event.target.closest("button[data-trip-detail]");
   if (!button) return;
   const panel = tripsContent.querySelector(`[data-trip-panel="${button.dataset.tripDetail}"]`);
   panel?.classList.toggle("hidden");
   button.textContent = panel?.classList.contains("hidden") ? "Ver detalhes da viagem" : "Ocultar detalhes";
+});
+
+protectionContent.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-center-event]");
+  const sessionId = activeReservation?.journeyProtection?.sessionId;
+  if (!button || !sessionId) return;
+  button.disabled = true;
+  try {
+    const response = await fetch(`/api/protection-sessions/${sessionId}/events`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: button.dataset.centerEvent, context: { overnightRequired: button.dataset.overnight === "true", atHomeCity: false } }) });
+    const protection = await response.json();
+    if (!response.ok) throw new Error(protection.detail || "Falha ao registrar evento");
+    activeReservation.journeyProtection = protection;
+    renderProtectionState(activeReservation, protection);
+  } catch (error) { button.disabled = false; window.alert(error.message); }
 });
 
 payButton.addEventListener("click", async () => {

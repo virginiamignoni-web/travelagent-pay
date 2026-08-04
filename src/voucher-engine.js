@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { findProtectionSession, findVoucher, persistProtectionSession, persistVoucher } from "./database.js";
 
 const protectionSessions = new Map();
 const vouchers = new Map();
@@ -21,7 +22,11 @@ function auditHash(record) {
 }
 
 function sessionVouchers(session) {
-  return session.voucherIds.map((id) => vouchers.get(id)).filter(Boolean);
+  return session.voucherIds.map((id) => {
+    const voucher = vouchers.get(id) || findVoucher(id);
+    if (voucher) vouchers.set(id, voucher);
+    return voucher;
+  }).filter(Boolean);
 }
 
 function publicSession(session) {
@@ -52,6 +57,7 @@ function issueVoucher(session, type) {
   };
   const voucher = {
     id,
+    protectionSessionId: session.sessionId,
     code: redemptionCode(id),
     type,
     label: rule.label,
@@ -89,6 +95,7 @@ function issueVoucher(session, type) {
     audit: [{ at: issuedAt, event: "voucher_issued", actor: "BIT Travels Journey Protection Engine" }],
   };
   vouchers.set(id, voucher);
+  persistVoucher(voucher);
   session.voucherIds.push(id);
   session.ledger.push({ at: issuedAt, event: "voucher_issued", voucherId: id, type, amount: voucher.amount, asset: voucher.asset, auditHash: voucher.auditReceipt.hash, notificationId: voucher.notification.id });
   return voucher;
@@ -140,12 +147,14 @@ export function createProtectionSession({ input = {}, primaryFlight } = {}) {
     disclaimer: "Demonstração em Testnet. Valores são ilustrativos; elegibilidade, valores e liquidação dependem de acordo com a companhia aérea e validação operacional.",
   };
   protectionSessions.set(session.sessionId, session);
+  persistProtectionSession(session);
   return publicSession(session);
 }
 
 export function recordProtectionEvent({ sessionId, event, context = {} } = {}) {
-  const session = protectionSessions.get(sessionId);
+  const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
   if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
+  protectionSessions.set(sessionId, session);
   if (!VALID_EVENTS.includes(event)) throw Object.assign(new Error("Event must be on_time, delayed_60, delayed_120, or delayed_240"), { statusCode: 400 });
   if (sessionVouchers(session).some((item) => item.status === "redeemed")) throw Object.assign(new Error("A case with redeemed assistance cannot be reset"), { statusCode: 409 });
   const at = now();
@@ -156,17 +165,20 @@ export function recordProtectionEvent({ sessionId, event, context = {} } = {}) {
   session.ledger.push({ at, event: "flight_status_recorded", status: event, delayMinutes: session.delayMinutes, context: clone(session.context) });
   applyAnacRules(session);
   if (session.delayMinutes >= 240) session.entitlementOptions = ["reaccommodation", "full_refund", "alternative_transport"];
+  persistProtectionSession(session);
   return publicSession(session);
 }
 
 export function getProtectionSession(sessionId) {
-  const session = protectionSessions.get(sessionId);
+  const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
+  if (session) protectionSessions.set(sessionId, session);
   return session ? publicSession(session) : null;
 }
 
 export function redeemVoucher({ voucherId, code, merchantId, merchantCategory } = {}) {
-  const voucher = vouchers.get(voucherId);
+  const voucher = vouchers.get(voucherId) || findVoucher(voucherId);
   if (!voucher) throw Object.assign(new Error("Voucher was not found"), { statusCode: 404 });
+  vouchers.set(voucherId, voucher);
   if (voucher.status !== "issued") throw Object.assign(new Error("Voucher has already been redeemed"), { statusCode: 409 });
   if (voucher.code !== String(code || "").toUpperCase()) throw Object.assign(new Error("Invalid voucher code"), { statusCode: 403 });
   if (!voucher.validFor.includes(merchantCategory)) throw Object.assign(new Error("Merchant category is not eligible for this voucher"), { statusCode: 403 });
@@ -174,11 +186,14 @@ export function redeemVoucher({ voucherId, code, merchantId, merchantCategory } 
   const at = now();
   voucher.status = "redeemed"; voucher.redeemedAt = at; voucher.redeemedBy = merchantId || "demo-airport-merchant"; voucher.merchantCategory = merchantCategory;
   voucher.audit.push({ at, event: "voucher_redeemed", actor: voucher.redeemedBy, merchantCategory });
-  const session = [...protectionSessions.values()].find((item) => item.voucherIds.includes(voucherId));
+  persistVoucher(voucher);
+  const session = [...protectionSessions.values()].find((item) => item.voucherIds.includes(voucherId)) || (voucher.protectionSessionId ? findProtectionSession(voucher.protectionSessionId) : null);
+  if (session) protectionSessions.set(session.sessionId, session);
   if (session) {
     session.updatedAt = at;
     session.ledger.push({ at, event: "voucher_redeemed", voucherId, type: voucher.type, merchantId: voucher.redeemedBy });
     if (sessionVouchers(session).every((item) => item.status === "redeemed")) session.status = "redeemed";
+    persistProtectionSession(session);
   }
   return clone(voucher);
 }

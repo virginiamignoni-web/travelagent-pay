@@ -11,6 +11,7 @@ import { searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
 import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
+import { findProtectionSession, findVoucher } from "../src/database.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -214,6 +215,8 @@ test("issues a testnet meal voucher when a flight reaches 120 minutes of delay",
   assert.equal(delayed.voucher.asset, "USDC");
   assert.equal(delayed.voucher.network, "stellar:testnet");
   assert.equal(delayed.voucher.status, "issued");
+  assert.equal(findProtectionSession(session.sessionId).delayMinutes, 120);
+  assert.equal(findVoucher(delayed.voucher.id).status, "issued");
 });
 
 test("redeems a voucher once and blocks duplicate redemption", () => {

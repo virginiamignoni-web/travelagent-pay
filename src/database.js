@@ -23,6 +23,16 @@ database.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_reservations_wallet_created
     ON reservations (traveler_wallet, created_at DESC);
+  CREATE TABLE IF NOT EXISTS protection_sessions (
+    session_id TEXT PRIMARY KEY,
+    updated_at TEXT NOT NULL,
+    payload_json TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS vouchers (
+    voucher_id TEXT PRIMARY KEY,
+    updated_at TEXT NOT NULL,
+    payload_json TEXT NOT NULL
+  );
 `);
 
 const upsertReservation = database.prepare(`
@@ -38,6 +48,10 @@ const upsertReservation = database.prepare(`
 const selectReservation = database.prepare("SELECT payload_json FROM reservations WHERE reservation_id = ?");
 const selectAllReservations = database.prepare("SELECT payload_json FROM reservations ORDER BY created_at DESC");
 const selectWalletReservations = database.prepare("SELECT payload_json FROM reservations WHERE traveler_wallet = ? ORDER BY created_at DESC");
+const upsertProtection = database.prepare("INSERT INTO protection_sessions (session_id, updated_at, payload_json) VALUES (?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET updated_at = excluded.updated_at, payload_json = excluded.payload_json");
+const selectProtection = database.prepare("SELECT payload_json FROM protection_sessions WHERE session_id = ?");
+const upsertVoucher = database.prepare("INSERT INTO vouchers (voucher_id, updated_at, payload_json) VALUES (?, ?, ?) ON CONFLICT(voucher_id) DO UPDATE SET updated_at = excluded.updated_at, payload_json = excluded.payload_json");
+const selectVoucher = database.prepare("SELECT payload_json FROM vouchers WHERE voucher_id = ?");
 
 export function persistReservation(reservation) {
   upsertReservation.run(
@@ -63,4 +77,24 @@ export function findReservations({ travelerWallet } = {}) {
 
 export function databaseInfo() {
   return { engine: "sqlite", persistent: databasePath !== ":memory:", path: databasePath === ":memory:" ? ":memory:" : "data/travelagent.sqlite" };
+}
+
+export function persistProtectionSession(session) {
+  upsertProtection.run(session.sessionId, session.updatedAt || session.createdAt, JSON.stringify(session));
+  return structuredClone(session);
+}
+
+export function findProtectionSession(sessionId) {
+  const row = selectProtection.get(sessionId);
+  return row ? JSON.parse(row.payload_json) : null;
+}
+
+export function persistVoucher(voucher) {
+  upsertVoucher.run(voucher.id, voucher.redeemedAt || voucher.issuedAt, JSON.stringify(voucher));
+  return structuredClone(voucher);
+}
+
+export function findVoucher(voucherId) {
+  const row = selectVoucher.get(voucherId);
+  return row ? JSON.parse(row.payload_json) : null;
 }
