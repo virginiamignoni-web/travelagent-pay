@@ -108,6 +108,21 @@ function addEntitlement(session, type, detail) {
   session.ledger.push({ at, event: "entitlement_granted", type, detail });
 }
 
+function proposeRecoveryActions(session) {
+  if (session.delayMinutes < 60) return;
+  session.recoveryActions ||= [];
+  const proposedAt = now();
+  const add = (service, type, title, detail) => {
+    if (!service || session.recoveryActions.some((item) => item.type === type)) return;
+    const action = { id: randomUUID(), type, title, detail, service, status: "pending_approval", supplierExecutionAvailable: false, environment: "testnet", proposedAt };
+    action.auditHash = auditHash({ sessionId: session.sessionId, ...action });
+    session.recoveryActions.push(action);
+    session.ledger.push({ at: proposedAt, event: "recovery_action_proposed", actionId: action.id, type, auditHash: action.auditHash });
+  };
+  add(session.linkedServices?.hotel, "protect_hotel_checkin", "Proteger check-in do hotel", `Notificar chegada aproximadamente ${session.delayMinutes} minutos mais tarde e solicitar manutenção da reserva.`);
+  add(session.linkedServices?.mobility, "reschedule_transfer", "Reprogramar traslado", `Deslocar a retirada em aproximadamente ${session.delayMinutes} minutos conforme a nova chegada estimada.`);
+}
+
 function applyAnacRules(session) {
   if (session.delayMinutes >= 60) addEntitlement(session, "communication", "Internet ou telefone disponibilizado durante a espera.");
   if (session.delayMinutes >= 120) issueVoucher(session, "meal");
@@ -142,7 +157,7 @@ export function createProtectionSession({ input = {}, primaryFlight } = {}) {
       network: "stellar:testnet",
       rule: "Hotel somente quando houver pernoite, salvo necessidades de assistência especial; no domicílio, pode ser oferecido apenas traslado.",
     },
-    entitlementOptions: [], entitlements: [], voucherIds: [],
+    linkedServices: input.linkedServices || {}, recoveryActions: [], entitlementOptions: [], entitlements: [], voucherIds: [],
     ledger: [{ at: createdAt, event: "monitoring_started", flight: primaryFlight?.airline || "pending" }],
     disclaimer: "Demonstração em Testnet. Valores são ilustrativos; elegibilidade, valores e liquidação dependem de acordo com a companhia aérea e validação operacional.",
   };
@@ -165,7 +180,28 @@ export function recordProtectionEvent({ sessionId, event, context = {}, verifica
   if (verification) session.verification = clone(verification);
   session.ledger.push({ at, event: "flight_status_recorded", status: event, delayMinutes: session.delayMinutes, context: clone(session.context), verification: verification ? clone(verification) : null });
   applyAnacRules(session);
+  proposeRecoveryActions(session);
   if (session.delayMinutes >= 240) session.entitlementOptions = ["reaccommodation", "full_refund", "alternative_transport"];
+  persistProtectionSession(session);
+  return publicSession(session);
+}
+
+export function decideRecoveryAction({ sessionId, actionId, decision, actor = "traveler" } = {}) {
+  const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
+  if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
+  protectionSessions.set(sessionId, session);
+  const action = session.recoveryActions?.find((item) => item.id === actionId);
+  if (!action) throw Object.assign(new Error("Recovery action was not found"), { statusCode: 404 });
+  if (!["authorized", "rejected"].includes(decision)) throw Object.assign(new Error("Decision must be authorized or rejected"), { statusCode: 400 });
+  if (action.status !== "pending_approval") throw Object.assign(new Error("Recovery action already has a final decision"), { statusCode: 409 });
+  const at = now();
+  action.status = decision === "authorized" ? "authorized_testnet" : "rejected";
+  action.decidedAt = at;
+  action.decidedBy = actor;
+  action.execution = decision === "authorized" ? { status: "queued_sandbox", supplierChanged: false, note: "Autorização registrada. A execução externa depende da API do fornecedor." } : null;
+  action.decisionAuditHash = auditHash({ sessionId, actionId, decision, actor, at });
+  session.updatedAt = at;
+  session.ledger.push({ at, event: `recovery_action_${action.status}`, actionId, actor, auditHash: action.decisionAuditHash });
   persistProtectionSession(session);
   return publicSession(session);
 }
@@ -191,6 +227,16 @@ export function getProtectionSession(sessionId) {
   const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
   if (session) protectionSessions.set(sessionId, session);
   return session ? publicSession(session) : null;
+}
+
+export function linkProtectionServices({ sessionId, linkedServices = {} } = {}) {
+  const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
+  if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
+  protectionSessions.set(sessionId, session);
+  session.linkedServices = { ...session.linkedServices, ...clone(linkedServices) };
+  session.updatedAt = now();
+  persistProtectionSession(session);
+  return publicSession(session);
 }
 
 export function redeemVoucher({ voucherId, code, merchantId, merchantCategory } = {}) {

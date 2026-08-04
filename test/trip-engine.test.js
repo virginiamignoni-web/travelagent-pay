@@ -10,7 +10,7 @@ import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { buildDemoHotels, searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
-import { createProtectionSession, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "../src/voucher-engine.js";
+import { createProtectionSession, decideRecoveryAction, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "../src/voucher-engine.js";
 import { summarizeFlightVerification, verifyFlightStatus } from "../src/aviationstack.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
 import { buildDemoFlightOffers, createDuffelOrder, summarizeOffer } from "../src/duffel.js";
@@ -289,6 +289,19 @@ test("applies the progressive ANAC assistance thresholds", () => {
   assert.ok(fourHours.vouchers.some((item) => item.type === "transport"));
   assert.ok(fourHours.vouchers.some((item) => item.type === "hotel"));
   assert.deepEqual(fourHours.entitlementOptions, ["reaccommodation", "full_refund", "alternative_transport"]);
+});
+
+test("proposes auditable hotel and transfer recovery after a confirmed delay", () => {
+  const session = createProtectionSession({
+    input: { linkedServices: { hotel: { id: "hotel-1", name: "Hotel Lisboa" }, mobility: { id: "transfer-1", name: "Traslado privado" } } },
+    primaryFlight: { airline: "TAP", flightNumber: "TP88" },
+  });
+  const delayed = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120", verification: { verified: true, delayMinutes: 120, source: "test" } });
+  assert.equal(delayed.recoveryActions.length, 2);
+  assert.ok(delayed.recoveryActions.every((item) => item.status === "pending_approval" && /^[a-f0-9]{64}$/.test(item.auditHash)));
+  const decided = decideRecoveryAction({ sessionId: session.sessionId, actionId: delayed.recoveryActions[0].id, decision: "authorized" });
+  assert.equal(decided.recoveryActions[0].status, "authorized_testnet");
+  assert.equal(decided.recoveryActions[0].execution.supplierChanged, false);
 });
 
 test("does not issue hotel when the passenger is in their home city", () => {

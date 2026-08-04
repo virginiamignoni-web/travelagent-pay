@@ -391,6 +391,7 @@ function renderProtectionState(reservation, protection) {
   <div class="protection-actions"><div><span>RELATO DO PASSAGEIRO · VERIFICAÇÃO EXTERNA</span><h3>Informar situação do voo</h3></div><button data-center-event="on_time">Informar pontual</button><button data-center-event="delayed_60">Relatar atraso 1h</button><button data-center-event="delayed_120">Relatar atraso 2h</button><button data-center-event="delayed_240" data-overnight="true">Relatar atraso 4h + pernoite</button></div>
   <div class="testnet-demonstration"><div><span>DEMONSTRAÇÃO TRANSPARENTE · TESTNET</span><h3>Executar o ciclo completo de proteção</h3><p>Simula 2h de atraso para demonstrar emissão, notificação e auditoria. Não representa confirmação da companhia nem da Aviationstack.</p></div><button data-demo-delay>Demonstrar atraso de 2h</button></div>
   ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Direitos ativados</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></article>`).join("")}</div>` : ""}
+  ${protection?.recoveryActions?.length ? `<div class="recovery-actions"><div class="recovery-heading"><span>RECUPERAÇÃO DA VIAGEM</span><h3>Hotel e mobilidade vinculados</h3></div>${protection.recoveryActions.map((action) => `<article><div><b>${action.title}</b><span>${action.service?.name || "Serviço vinculado"}</span><p>${action.detail}</p><code>${action.auditHash}</code></div><aside><strong>${action.status.replaceAll("_", " ")}</strong>${action.status === "pending_approval" ? `<button data-recovery-action="${action.id}" data-decision="authorized">Autorizar em Testnet</button><button class="secondary" data-recovery-action="${action.id}" data-decision="rejected">Recusar</button>` : `<small>${action.execution?.note || "Decisão registrada e auditável."}</small>`}</aside></article>`).join("")}</div>` : ""}
   ${vouchers.length ? `<div class="center-vouchers"><h3>Benefícios emitidos</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>Nenhum benefício necessário</h3><p>O voo está sendo monitorado. Vouchers aparecem aqui quando um gatilho elegível é registrado.</p></div>`}
   <div class="center-audit"><div><span>TRILHA AUDITÁVEL</span><h3>${protection?.ledger?.length || 0} evento(s) registrado(s)</h3></div><code>Session ${protection?.sessionId || "não disponível"}</code><small>Todos os horários são registrados em formato ISO; vouchers incluem hash SHA-256 e referência legal.</small></div>`;
 }
@@ -649,6 +650,18 @@ tripsContent.addEventListener("click", (event) => {
 });
 
 protectionContent.addEventListener("click", async (event) => {
+  const recoveryButton = event.target.closest("button[data-recovery-action]");
+  if (recoveryButton && activeReservation?.journeyProtection?.sessionId) {
+    recoveryButton.disabled = true;
+    try {
+      const response = await fetch(`/api/protection-sessions/${activeReservation.journeyProtection.sessionId}/recovery-actions/${recoveryButton.dataset.recoveryAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ decision: recoveryButton.dataset.decision }) });
+      const protection = await response.json();
+      if (!response.ok) throw new Error(protection.detail || "Falha ao registrar decisão");
+      activeReservation.journeyProtection = protection;
+      renderProtectionState(activeReservation, protection);
+    } catch (error) { recoveryButton.disabled = false; window.alert(error.message); }
+    return;
+  }
   const button = event.target.closest("button[data-center-event], button[data-demo-delay]");
   const sessionId = activeReservation?.journeyProtection?.sessionId;
   if (!button || !sessionId) return;

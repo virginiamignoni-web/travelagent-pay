@@ -14,7 +14,7 @@ import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
 import { buildDemoHotels, searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
-import { createProtectionSession, getProtectionSession, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "./voucher-engine.js";
+import { createProtectionSession, decideRecoveryAction, getProtectionSession, linkProtectionServices, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "./voucher-engine.js";
 import { verifyFlightStatus } from "./aviationstack.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
 import { databaseInfo, findVouchers } from "./database.js";
@@ -79,7 +79,10 @@ app.post("/api/reservations", (req, res, next) => {
     const travelerWallet = req.body.travelerWallet || req.header("x-traveler-wallet") || null;
     const reservation = createReservation({ ...req.body, travelerWallet });
     const primaryFlight = reservation.flight || req.body.plan?.decision?.primaryFlight;
-    const sessionInput = { ...req.body.input, bookingReference: reservation.supplierReferences?.pnr || null, internalReference: reservation.internalReference, travelerWallet };
+    const sessionInput = { ...req.body.input, bookingReference: reservation.supplierReferences?.pnr || null, internalReference: reservation.internalReference, travelerWallet, linkedServices: {
+      hotel: reservation.hotel ? { id: reservation.hotel.id, name: reservation.hotel.name, bookingReference: reservation.hotel.bookingReference || null, status: reservation.supplierExecution.hotelBooked ? "booked" : "selected_sandbox" } : null,
+      mobility: reservation.mobility ? { id: reservation.mobility.id, name: reservation.mobility.label, bookingReference: reservation.mobility.bookingReference || null, status: "selected_sandbox", estimatedMinutes: reservation.mobility.estimatedMinutes } : null,
+    } };
     reservation.approvalQueue = createApprovalSession({ input: sessionInput, contingencyPlan: req.body.plan?.contingencyPlan, decision: req.body.plan?.decision });
     reservation.journeyProtection = createProtectionSession({ input: sessionInput, primaryFlight });
     return res.status(201).json(saveReservation(reservation));
@@ -114,8 +117,13 @@ app.get("/api/protection-sessions/:sessionId", (req, res) => {
 });
 
 async function verifyAndApplyProtection(sessionId, { reportedDelayMinutes = 0, context = {} } = {}) {
-  const session = getProtectionSession(sessionId);
+  let session = getProtectionSession(sessionId);
   if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
+  const reservation = listReservations().find((item) => item.journeyProtection?.sessionId === sessionId);
+  if (reservation) session = linkProtectionServices({ sessionId, linkedServices: {
+    hotel: reservation.hotel ? { id: reservation.hotel.id, name: reservation.hotel.name, bookingReference: reservation.hotel.bookingReference || null, status: reservation.supplierExecution?.hotelBooked ? "booked" : "selected_sandbox" } : null,
+    mobility: reservation.mobility ? { id: reservation.mobility.id, name: reservation.mobility.label, bookingReference: reservation.mobility.bookingReference || null, status: "selected_sandbox", estimatedMinutes: reservation.mobility.estimatedMinutes } : null,
+  } });
   const verification = await verifyFlightStatus({ flight: session.flight, reportedDelayMinutes });
   if (!verification.verified) return { pending: true, protection: recordProtectionReport({ sessionId, event: reportedDelayMinutes >= 240 ? "delayed_240" : reportedDelayMinutes >= 120 ? "delayed_120" : reportedDelayMinutes >= 60 ? "delayed_60" : "on_time", context, verification }) };
   const confirmedEvent = verification.delayMinutes >= 240 ? "delayed_240" : verification.delayMinutes >= 120 ? "delayed_120" : verification.delayMinutes >= 60 ? "delayed_60" : "on_time";
@@ -132,6 +140,11 @@ app.post("/api/protection-sessions/:sessionId/verify", async (req, res, next) =>
 app.post("/api/protection-sessions/:sessionId/demo-delay", (req, res, next) => {
   try {
     const checkedAt = new Date().toISOString();
+    const reservation = listReservations().find((item) => item.journeyProtection?.sessionId === req.params.sessionId);
+    if (reservation) linkProtectionServices({ sessionId: req.params.sessionId, linkedServices: {
+      hotel: reservation.hotel ? { id: reservation.hotel.id, name: reservation.hotel.name, status: reservation.supplierExecution?.hotelBooked ? "booked" : "selected_sandbox" } : null,
+      mobility: reservation.mobility ? { id: reservation.mobility.id, name: reservation.mobility.label, status: "selected_sandbox", estimatedMinutes: reservation.mobility.estimatedMinutes } : null,
+    } });
     return res.json(recordProtectionEvent({
       sessionId: req.params.sessionId,
       event: "delayed_120",
@@ -149,6 +162,12 @@ app.post("/api/protection-sessions/:sessionId/events", async (req, res, next) =>
   } catch (error) {
     return next(error);
   }
+});
+
+app.post("/api/protection-sessions/:sessionId/recovery-actions/:actionId", (req, res, next) => {
+  try {
+    return res.json(decideRecoveryAction({ sessionId: req.params.sessionId, actionId: req.params.actionId, decision: req.body.decision, actor: req.body.actor || "traveler" }));
+  } catch (error) { return next(error); }
 });
 
 app.post("/api/vouchers/:voucherId/redeem", (req, res, next) => {
