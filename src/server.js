@@ -16,7 +16,7 @@ import { searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
 import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
-import { databaseInfo } from "./database.js";
+import { databaseInfo, findVouchers } from "./database.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -89,6 +89,21 @@ app.post("/api/vouchers/:voucherId/redeem", (req, res, next) => {
   } catch (error) {
     return next(error);
   }
+});
+
+app.get("/api/voucher-wallet", (req, res) => {
+  const travelerWallet = req.query.travelerWallet || null;
+  const vouchers = findVouchers({ travelerWallet });
+  const issued = vouchers.filter((item) => item.status === "issued");
+  const redeemed = vouchers.filter((item) => item.status === "redeemed");
+  const total = (items) => items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2);
+  res.json({
+    network: "stellar:testnet",
+    travelerWallet,
+    summary: { count: vouchers.length, availableCount: issued.length, redeemedCount: redeemed.length, issuedUsdc: total(vouchers), availableUsdc: total(issued), redeemedUsdc: total(redeemed) },
+    vouchers,
+    audit: { generatedAt: new Date().toISOString(), hashAlgorithm: "SHA-256", onChainSettlements: vouchers.filter((item) => item.settlement?.transactionHash).length, disclaimer: "Valores e liquidação são demonstrativos em Testnet; os hashes comprovam a integridade do registro do protótipo." },
+  });
 });
 
 app.get("/api/approval-sessions/:sessionId", (req, res) => {

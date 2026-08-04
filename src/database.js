@@ -52,6 +52,8 @@ const upsertProtection = database.prepare("INSERT INTO protection_sessions (sess
 const selectProtection = database.prepare("SELECT payload_json FROM protection_sessions WHERE session_id = ?");
 const upsertVoucher = database.prepare("INSERT INTO vouchers (voucher_id, updated_at, payload_json) VALUES (?, ?, ?) ON CONFLICT(voucher_id) DO UPDATE SET updated_at = excluded.updated_at, payload_json = excluded.payload_json");
 const selectVoucher = database.prepare("SELECT payload_json FROM vouchers WHERE voucher_id = ?");
+const selectAllVouchers = database.prepare("SELECT payload_json FROM vouchers ORDER BY updated_at DESC");
+const selectWalletVouchers = database.prepare("SELECT payload_json FROM vouchers WHERE json_extract(payload_json, '$.travelerWallet') = ? ORDER BY updated_at DESC");
 
 export function persistReservation(reservation) {
   upsertReservation.run(
@@ -97,4 +99,9 @@ export function persistVoucher(voucher) {
 export function findVoucher(voucherId) {
   const row = selectVoucher.get(voucherId);
   return row ? JSON.parse(row.payload_json) : null;
+}
+
+export function findVouchers({ travelerWallet } = {}) {
+  const rows = travelerWallet ? selectWalletVouchers.all(travelerWallet) : selectAllVouchers.all();
+  return rows.map((row) => JSON.parse(row.payload_json));
 }

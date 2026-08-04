@@ -74,7 +74,11 @@ const hero = document.querySelector(".hero");
 const protectionNav = document.querySelector("#protection-nav");
 const protectionCenter = document.querySelector("#protection-center");
 const protectionContent = document.querySelector("#protection-content");
+const walletNav = document.querySelector("#wallet-nav");
+const voucherWallet = document.querySelector("#voucher-wallet");
+const walletContent = document.querySelector("#wallet-content");
 let activeReservation = null;
+let activeWalletReport = null;
 
 let tripInput;
 
@@ -295,6 +299,7 @@ async function renderMyTrips() {
   reservationStage.classList.add("hidden");
   myTrips.classList.remove("hidden");
   protectionCenter.classList.add("hidden");
+  voucherWallet.classList.add("hidden");
   document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === tripsNav));
   tripsContent.innerHTML = `<div class="trips-loading">Carregando suas viagens…</div>`;
   const query = connectedWallet ? `?travelerWallet=${encodeURIComponent(connectedWallet.address)}` : "";
@@ -335,6 +340,7 @@ async function openProtectionCenter(reservationId = null) {
   activeReservation = payload.reservations.find((item) => item.reservationId === reservationId) || payload.reservations[0] || null;
   hero.classList.add("hidden"); journeyProgress.classList.add("hidden"); plannerSection.classList.add("hidden"); reservationStage.classList.add("hidden"); myTrips.classList.add("hidden");
   protectionCenter.classList.remove("hidden");
+  voucherWallet.classList.add("hidden");
   document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === protectionNav));
   if (!activeReservation) protectionContent.innerHTML = `<div class="empty-trips"><h3>Nenhuma viagem ativa</h3><p>Confirme uma viagem antes de ativar a proteção.</p></div>`;
   else {
@@ -348,9 +354,38 @@ async function openProtectionCenter(reservationId = null) {
   protectionCenter.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function walletVoucherCard(voucher) {
+  return `<article class="wallet-voucher ${voucher.status}">
+    <div class="wallet-voucher-top"><span>${voucher.label}</span><b>${voucher.status === "redeemed" ? "RESGATADO" : "DISPONÍVEL"}</b></div>
+    <div class="wallet-voucher-value"><strong>${voucher.amount}</strong><span>${voucher.asset}<small>Stellar Testnet</small></span></div>
+    <p>${voucher.notification?.message || voucher.legalBasis}</p>
+    <div class="wallet-voucher-meta"><span><b>Validade</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Categorias</b>${voucher.validFor.join(" · ")}</span><span><b>Voo</b>${voucher.flightReference || "Não emitido"}</span><span><b>PNR</b>${voucher.bookingReference || "Não emitido"}</span></div>
+    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm}</b><code>${voucher.auditReceipt?.hash}</code><b>Carimbo de data e hora</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar transaction hash</b><code>${voucher.settlement?.transactionHash || "Pendente · demonstração off-chain"}</code></div>
+  </article>`;
+}
+
+async function openVoucherWallet() {
+  hero.classList.add("hidden"); journeyProgress.classList.add("hidden"); plannerSection.classList.add("hidden"); reservationStage.classList.add("hidden"); myTrips.classList.add("hidden"); protectionCenter.classList.add("hidden");
+  voucherWallet.classList.remove("hidden");
+  document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === walletNav));
+  walletContent.innerHTML = `<div class="trips-loading">Carregando carteira e auditoria…</div>`;
+  const query = connectedWallet ? `?travelerWallet=${encodeURIComponent(connectedWallet.address)}` : "";
+  try {
+    const response = await fetch(`/api/voucher-wallet${query}`);
+    const report = await response.json();
+    if (!response.ok) throw new Error(report.detail || "Não foi possível carregar a carteira");
+    activeWalletReport = report;
+    walletContent.innerHTML = `<div class="wallet-summary"><article><span>SALDO DISPONÍVEL</span><strong>${report.summary.availableUsdc}<small>USDC Testnet</small></strong></article><article><span>EMITIDOS</span><strong>${report.summary.count}<small>vouchers</small></strong></article><article><span>RESGATADOS</span><strong>${report.summary.redeemedUsdc}<small>USDC Testnet</small></strong></article></div>
+      ${report.vouchers.length ? `<div class="wallet-vouchers">${report.vouchers.map(walletVoucherCard).join("")}</div>` : `<div class="empty-wallet"><h3>Nenhum voucher emitido</h3><p>Os benefícios elegíveis aparecerão aqui após um evento registrado na Central de Proteção.</p></div>`}
+      <section class="audit-center"><div class="audit-center-heading"><div><span>AUDITORIA CONSOLIDADA</span><h3>Registros verificáveis</h3></div><button type="button" data-export-audit>Exportar relatório JSON</button></div><div class="audit-stats"><span><b>${report.audit.hashAlgorithm}</b>algoritmo de integridade</span><span><b>${report.audit.onChainSettlements}</b>liquidações on-chain</span><span><b>${new Date(report.audit.generatedAt).toLocaleString()}</b>relatório gerado</span></div><p>${report.audit.disclaimer}</p></section>`;
+  } catch (error) { walletContent.innerHTML = `<div class="empty-wallet"><h3>Carteira indisponível</h3><p>${error.message}</p></div>`; }
+  voucherWallet.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function showPlanner() {
   myTrips.classList.add("hidden");
   protectionCenter.classList.add("hidden");
+  voucherWallet.classList.add("hidden");
   hero.classList.remove("hidden");
   journeyProgress.classList.remove("hidden");
   plannerSection.classList.remove("hidden");
@@ -495,8 +530,10 @@ reservationReview.addEventListener("click", async (event) => {
 
 tripsNav.addEventListener("click", (event) => { event.preventDefault(); renderMyTrips(); });
 protectionNav.addEventListener("click", (event) => { event.preventDefault(); openProtectionCenter(); });
+walletNav.addEventListener("click", (event) => { event.preventDefault(); openVoucherWallet(); });
 document.querySelector("#back-to-planner").addEventListener("click", showPlanner);
 document.querySelector("#back-to-trips").addEventListener("click", renderMyTrips);
+document.querySelector("#wallet-back-to-trips").addEventListener("click", renderMyTrips);
 reservationReview.addEventListener("click", (event) => {
   if (event.target.closest("button[data-open-trips]")) renderMyTrips();
 });
@@ -523,6 +560,16 @@ protectionContent.addEventListener("click", async (event) => {
     activeReservation.journeyProtection = protection;
     renderProtectionState(activeReservation, protection);
   } catch (error) { button.disabled = false; window.alert(error.message); }
+});
+
+walletContent.addEventListener("click", (event) => {
+  if (!event.target.closest("button[data-export-audit]") || !activeWalletReport) return;
+  const blob = new Blob([JSON.stringify(activeWalletReport, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `bit-travels-audit-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 });
 
 payButton.addEventListener("click", async () => {
