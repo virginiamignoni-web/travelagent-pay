@@ -10,7 +10,8 @@ import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { buildDemoHotels, searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
-import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
+import { createProtectionSession, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "../src/voucher-engine.js";
+import { summarizeFlightVerification, verifyFlightStatus } from "../src/aviationstack.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
 import { buildDemoFlightOffers, createDuffelOrder, summarizeOffer } from "../src/duffel.js";
 
@@ -219,6 +220,33 @@ test("issues a testnet meal voucher when a flight reaches 120 minutes of delay",
   assert.equal(findProtectionSession(session.sessionId).delayMinutes, 120);
   assert.equal(findVoucher(delayed.voucher.id).status, "issued");
   assert.ok(findVouchers({ travelerWallet: "GTEST" }).some((item) => item.id === delayed.voucher.id));
+});
+
+test("keeps a passenger delay report pending until an external source confirms it", () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "TAP", flightNumber: "TP88" } });
+  const pending = recordProtectionReport({ sessionId: session.sessionId, event: "delayed_120", verification: { verified: false, status: "not_found", source: "Aviationstack" } });
+  assert.equal(pending.status, "verification_pending");
+  assert.equal(pending.reportedDelayMinutes, 120);
+  assert.equal(pending.vouchers.length, 0);
+});
+
+test("normalizes Aviationstack delay evidence", () => {
+  const result = summarizeFlightVerification({
+    flight_status: "active",
+    flight: { iata: "TP88" },
+    airline: { name: "TAP Air Portugal" },
+    departure: { iata: "GRU", scheduled: "2026-08-04T10:00:00Z", estimated: "2026-08-04T12:10:00Z", delay: 130 },
+    arrival: { iata: "LIS", scheduled: "2026-08-04T18:00:00Z", estimated: "2026-08-04T20:00:00Z" },
+  }, 120);
+  assert.equal(result.verified, true);
+  assert.equal(result.delayMinutes, 130);
+  assert.equal(result.flightNumber, "TP88");
+});
+
+test("does not call Aviationstack without a configured key", async () => {
+  const result = await verifyFlightStatus({ flight: { number: "TP88" }, token: "", fetchImpl: () => { throw new Error("must not be called"); } });
+  assert.equal(result.verified, false);
+  assert.equal(result.status, "configuration_pending");
 });
 
 test("redeems a voucher once and blocks duplicate redemption", () => {

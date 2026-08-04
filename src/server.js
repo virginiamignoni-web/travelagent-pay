@@ -14,7 +14,8 @@ import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
 import { buildDemoHotels, searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
-import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
+import { createProtectionSession, getProtectionSession, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "./voucher-engine.js";
+import { verifyFlightStatus } from "./aviationstack.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
 import { databaseInfo, findVouchers } from "./database.js";
 
@@ -37,7 +38,7 @@ app.get("/vendor/freighter-api.js", (_req, res) => {
 app.use(express.static(join(here, "..", "public")));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), database: databaseInfo() });
+  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), aviationstackConfigured: Boolean(process.env.AVIATIONSTACK_ACCESS_KEY), database: databaseInfo() });
 });
 
 app.get("/api/payment-proof", (_req, res) => {
@@ -112,9 +113,27 @@ app.get("/api/protection-sessions/:sessionId", (req, res) => {
   return res.json(session);
 });
 
-app.post("/api/protection-sessions/:sessionId/events", (req, res, next) => {
+async function verifyAndApplyProtection(sessionId, { reportedDelayMinutes = 0, context = {} } = {}) {
+  const session = getProtectionSession(sessionId);
+  if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
+  const verification = await verifyFlightStatus({ flight: session.flight, reportedDelayMinutes });
+  if (!verification.verified) return { pending: true, protection: recordProtectionReport({ sessionId, event: reportedDelayMinutes >= 240 ? "delayed_240" : reportedDelayMinutes >= 120 ? "delayed_120" : reportedDelayMinutes >= 60 ? "delayed_60" : "on_time", context, verification }) };
+  const confirmedEvent = verification.delayMinutes >= 240 ? "delayed_240" : verification.delayMinutes >= 120 ? "delayed_120" : verification.delayMinutes >= 60 ? "delayed_60" : "on_time";
+  return { pending: false, protection: recordProtectionEvent({ sessionId, event: confirmedEvent, context, verification }) };
+}
+
+app.post("/api/protection-sessions/:sessionId/verify", async (req, res, next) => {
   try {
-    return res.json(recordProtectionEvent({ sessionId: req.params.sessionId, event: req.body.event, context: req.body.context }));
+    const result = await verifyAndApplyProtection(req.params.sessionId, { context: req.body?.context });
+    return res.status(result.pending ? 202 : 200).json(result.protection);
+  } catch (error) { return next(error); }
+});
+
+app.post("/api/protection-sessions/:sessionId/events", async (req, res, next) => {
+  try {
+    const reportedDelayMinutes = req.body.event === "delayed_240" ? 240 : req.body.event === "delayed_120" ? 120 : req.body.event === "delayed_60" ? 60 : 0;
+    const result = await verifyAndApplyProtection(req.params.sessionId, { reportedDelayMinutes, context: req.body.context });
+    return res.status(result.pending ? 202 : 200).json(result.protection);
   } catch (error) {
     return next(error);
   }

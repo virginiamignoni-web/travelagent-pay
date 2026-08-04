@@ -151,7 +151,7 @@ export function createProtectionSession({ input = {}, primaryFlight } = {}) {
   return publicSession(session);
 }
 
-export function recordProtectionEvent({ sessionId, event, context = {} } = {}) {
+export function recordProtectionEvent({ sessionId, event, context = {}, verification = null } = {}) {
   const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
   if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
   protectionSessions.set(sessionId, session);
@@ -162,9 +162,27 @@ export function recordProtectionEvent({ sessionId, event, context = {} } = {}) {
   session.currentEvent = event;
   session.delayMinutes = event === "delayed_240" ? 240 : event === "delayed_120" ? 120 : event === "delayed_60" ? 60 : 0;
   session.updatedAt = at;
-  session.ledger.push({ at, event: "flight_status_recorded", status: event, delayMinutes: session.delayMinutes, context: clone(session.context) });
+  if (verification) session.verification = clone(verification);
+  session.ledger.push({ at, event: "flight_status_recorded", status: event, delayMinutes: session.delayMinutes, context: clone(session.context), verification: verification ? clone(verification) : null });
   applyAnacRules(session);
   if (session.delayMinutes >= 240) session.entitlementOptions = ["reaccommodation", "full_refund", "alternative_transport"];
+  persistProtectionSession(session);
+  return publicSession(session);
+}
+
+export function recordProtectionReport({ sessionId, event, context = {}, verification } = {}) {
+  const session = protectionSessions.get(sessionId) || findProtectionSession(sessionId);
+  if (!session) throw Object.assign(new Error("Protection session was not found or expired"), { statusCode: 404 });
+  protectionSessions.set(sessionId, session);
+  if (!VALID_EVENTS.includes(event)) throw Object.assign(new Error("Event must be on_time, delayed_60, delayed_120, or delayed_240"), { statusCode: 400 });
+  const at = now();
+  const reportedDelayMinutes = event === "delayed_240" ? 240 : event === "delayed_120" ? 120 : event === "delayed_60" ? 60 : 0;
+  session.context = { ...session.context, ...context };
+  session.status = "verification_pending";
+  session.reportedDelayMinutes = reportedDelayMinutes;
+  session.verification = clone(verification);
+  session.updatedAt = at;
+  session.ledger.push({ at, event: "passenger_delay_reported", reportedStatus: event, reportedDelayMinutes, verification: clone(verification) });
   persistProtectionSession(session);
   return publicSession(session);
 }

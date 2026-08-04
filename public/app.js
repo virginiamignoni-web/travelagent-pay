@@ -380,11 +380,15 @@ function renderProtectionState(reservation, protection) {
   const delay = protection?.delayMinutes || 0;
   const vouchers = protection?.vouchers || [];
   const internalReference = reservation.internalReference || reservation.bookingReference;
+  const verification = protection?.verification;
+  const verificationBanner = verification
+    ? `<div class="flight-verification ${verification.verified ? "verified" : "pending"}"><i></i><div><b>${verification.verified ? `Atraso confirmado externamente · ${verification.delayMinutes} min` : "Verificando status do voo"}</b><span>${verification.verified ? `${verification.source} · ${verification.status}` : `${verification.reason || "Consulta externa em andamento"}. O relato foi registrado e será verificado novamente.`}</span></div><small>${verification.checkedAt ? new Date(verification.checkedAt).toLocaleString() : ""}</small></div>`
+    : `<div class="flight-verification idle"><i></i><div><b>Monitoramento preparado</b><span>Relate uma alteração para o agente cruzar o status com a fonte externa.</span></div></div>`;
   protectionContent.innerHTML = `<div class="protection-overview">
     <article class="flight-monitor"><div class="monitor-top"><span>MONITORAMENTO ATIVO</span><b>${protection?.flight?.number || "Voo não emitido"}</b></div><h3>${reservation.trip?.origin || "Origem"} → ${reservation.trip?.destinationAirport || reservation.destination}</h3><p>${protection?.flight?.airline || reservation.flight?.airline || "Companhia pendente"} · referência BIT ${internalReference}</p><strong>${delay}<small>minutos de atraso</small></strong></article>
     <article class="anac-rules"><span>ASSISTÊNCIA · RESOLUÇÃO ANAC 400/2016</span><div class="anac-timeline"><i class="active">Pontual</i><i class="${delay >= 60 ? "active" : ""}">1h<br>Comunicação</i><i class="${delay >= 120 ? "active" : ""}">2h<br>Alimentação</i><i class="${delay >= 240 ? "active" : ""}">4h<br>Reacomodação</i></div><small>Hotel depende de pernoite e localização do passageiro; no domicílio, aplica-se traslado quando cabível.</small></article>
-  </div>
-  <div class="protection-actions"><div><span>SIMULAÇÃO OPERACIONAL · TESTNET</span><h3>Registrar situação do voo</h3></div><button data-center-event="on_time">Pontual</button><button data-center-event="delayed_60">Atraso 1h</button><button data-center-event="delayed_120">Atraso 2h</button><button data-center-event="delayed_240" data-overnight="true">Atraso 4h + pernoite</button></div>
+  </div>${verificationBanner}
+  <div class="protection-actions"><div><span>RELATO DO PASSAGEIRO · VERIFICAÇÃO EXTERNA</span><h3>Informar situação do voo</h3></div><button data-center-event="on_time">Informar pontual</button><button data-center-event="delayed_60">Relatar atraso 1h</button><button data-center-event="delayed_120">Relatar atraso 2h</button><button data-center-event="delayed_240" data-overnight="true">Relatar atraso 4h + pernoite</button></div>
   ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Direitos ativados</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></article>`).join("")}</div>` : ""}
   ${vouchers.length ? `<div class="center-vouchers"><h3>Benefícios emitidos</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>Nenhum benefício necessário</h3><p>O voo está sendo monitorado. Vouchers aparecem aqui quando um gatilho elegível é registrado.</p></div>`}
   <div class="center-audit"><div><span>TRILHA AUDITÁVEL</span><h3>${protection?.ledger?.length || 0} evento(s) registrado(s)</h3></div><code>Session ${protection?.sessionId || "não disponível"}</code><small>Todos os horários são registrados em formato ISO; vouchers incluem hash SHA-256 e referência legal.</small></div>`;
@@ -402,7 +406,8 @@ async function openProtectionCenter(reservationId = null) {
   else {
     let protection = activeReservation.journeyProtection;
     if (protection?.sessionId) {
-      const stateResponse = await fetch(`/api/protection-sessions/${protection.sessionId}`);
+      renderProtectionState(activeReservation, { ...protection, verification: { verified: false, status: "checking", reason: "Consultando a fonte externa agora" } });
+      const stateResponse = await fetch(`/api/protection-sessions/${protection.sessionId}/verify`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
       if (stateResponse.ok) protection = await stateResponse.json();
     }
     renderProtectionState(activeReservation, protection);
@@ -646,14 +651,16 @@ protectionContent.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-center-event]");
   const sessionId = activeReservation?.journeyProtection?.sessionId;
   if (!button || !sessionId) return;
+  const originalLabel = button.textContent;
   button.disabled = true;
+  button.textContent = "Verificando status...";
   try {
     const response = await fetch(`/api/protection-sessions/${sessionId}/events`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: button.dataset.centerEvent, context: { overnightRequired: button.dataset.overnight === "true", atHomeCity: false } }) });
     const protection = await response.json();
     if (!response.ok) throw new Error(protection.detail || "Falha ao registrar evento");
     activeReservation.journeyProtection = protection;
     renderProtectionState(activeReservation, protection);
-  } catch (error) { button.disabled = false; window.alert(error.message); }
+  } catch (error) { button.disabled = false; button.textContent = originalLabel; window.alert(error.message); }
 });
 
 walletContent.addEventListener("click", (event) => {
