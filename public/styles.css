@@ -516,3 +516,31 @@ footer {
   .flight-card .option-choice { top: 14px; right: 14px; transform: none; }
   .center-vouchers { grid-template-columns: 1fr; }
 }
+
+/* Voucher wallet: preserve readable records instead of squeezing cards */
+.wallet-vouchers {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.wallet-voucher { min-width: 0; padding: 22px; }
+.wallet-voucher-top { grid-template-columns: minmax(0,1fr) auto auto; }
+.wallet-voucher-top > span { min-width: 0; }
+.wallet-voucher-summary > span { min-width: 0; line-height: 1.45; }
+.wallet-voucher-summary .booking-references { gap: 18px; }
+.wallet-voucher-summary .booking-references i { grid-template-columns: 125px minmax(0,1fr); gap: 8px; }
+.wallet-voucher-meta { gap: 10px; }
+.wallet-voucher-meta span { min-width: 0; padding: 10px; font-size: 10px; line-height: 1.4; }
+.wallet-voucher-meta b { margin-bottom: 3px; font-size: 8px; }
+.wallet-proof { gap: 5px; margin-top: 12px; padding: 13px; }
+.wallet-proof code, .wallet-proof small { overflow-wrap: anywhere; white-space: normal; }
+
+@media(max-width:1000px) {
+  .wallet-vouchers { grid-template-columns: 1fr; }
+}
+@media(max-width:560px) {
+  .wallet-voucher { padding: 17px; }
+  .wallet-voucher-top { grid-template-columns: 1fr auto; }
+  .wallet-voucher-top > b { grid-column: 1 / -1; justify-self: start; }
+  .wallet-voucher-summary .booking-references { grid-template-columns: 1fr; }
+  .wallet-voucher-summary .booking-references i { grid-template-columns: 1fr; }
+}
