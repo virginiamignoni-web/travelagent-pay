@@ -13,6 +13,7 @@ import { buildCompleteBudget } from "./budget-engine.js";
 import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
 import { searchNearbyHotels } from "./hotels.js";
+import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -38,6 +39,26 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/trip-preview", (req, res) => {
   res.json(buildPreview(req.body));
+});
+
+app.get("/api/approval-sessions/:sessionId", (req, res) => {
+  const session = getApprovalSession(req.params.sessionId);
+  if (!session) return res.status(404).json({ error: "Approval session was not found or expired" });
+  return res.json(session);
+});
+
+app.post("/api/approval-sessions/:sessionId/actions/:actionId", (req, res, next) => {
+  try {
+    const session = decideApprovalAction({
+      sessionId: req.params.sessionId,
+      actionId: req.params.actionId,
+      decision: req.body.decision,
+      actor: req.body.actor || "traveler",
+    });
+    return res.json(session);
+  } catch (error) {
+    return next(error);
+  }
 });
 
 app.post("/api/premium-trip-plan", async (req, res, next) => {
@@ -109,6 +130,7 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       completeBudget: plan.completeBudget,
       riskAssessment: plan.riskAssessment,
     });
+    plan.approvalQueue = createApprovalSession({ input: req.body, contingencyPlan: plan.contingencyPlan, decision: plan.decision });
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));
     return res.status(response.status).send(await response.text());
@@ -119,7 +141,7 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
 
 app.use((error, _req, res, _next) => {
   console.error(error);
-  res.status(500).json({ error: "BIT Travels Concierge could not complete this step", detail: error.message });
+  res.status(error.statusCode || 500).json({ error: "BIT Travels Concierge could not complete this step", detail: error.message });
 });
 
 app.listen(port, () => {

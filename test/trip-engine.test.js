@@ -8,6 +8,7 @@ import { buildCompleteBudget } from "../src/budget-engine.js";
 import { assessOperationalRisk } from "../src/risk-engine.js";
 import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { searchNearbyHotels } from "../src/hotels.js";
+import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -176,4 +177,26 @@ test("returns an honest unavailable hotel layer without an event center", async 
   const result = await searchNearbyHotels({ protectionZone: null });
   assert.equal(result.available, false);
   assert.deepEqual(result.hotels, []);
+});
+
+test("creates a real approval queue from contingency actions", () => {
+  const queue = createApprovalSession({
+    input: { autonomyLimitBrl: 100 },
+    contingencyPlan: { actions: [{ id: "flight-backup", category: "flight", action: "Prepare backup", trigger: "Delay", target: "Backup Air", estimatedDeltaBrl: 80, reserveCovers: true }] },
+    decision: { protectionScore: 84 },
+  });
+  assert.equal(queue.status, "awaiting_decisions");
+  assert.equal(queue.actions[0].status, "pending_approval");
+  assert.equal(queue.actions[0].autoEligible, true);
+});
+
+test("records an authorization in the approval audit ledger", () => {
+  const queue = createApprovalSession({
+    contingencyPlan: { actions: [{ id: "hotel-backup", category: "hotel", action: "Prepare hotel", trigger: "Unavailable", target: "Fallback", estimatedDeltaBrl: 450, reserveCovers: true }] },
+  });
+  const decided = decideApprovalAction({ sessionId: queue.sessionId, actionId: queue.actions[0].id, decision: "authorized", actor: "test-traveler" });
+  assert.equal(decided.actions[0].status, "authorized");
+  assert.equal(decided.actions[0].decidedBy, "test-traveler");
+  assert.equal(decided.status, "decisions_complete");
+  assert.ok(decided.ledger.some((entry) => entry.event === "action_authorized"));
 });

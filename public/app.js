@@ -7,6 +7,7 @@ const networkLabel = document.querySelector("#network-label");
 const walletButton = document.querySelector("#connect-wallet");
 let runtimeMode = "local";
 let connectedWallet = null;
+let activePlan = null;
 
 function shortAddress(address) {
   return `${address.slice(0, 5)}…${address.slice(-4)}`;
@@ -75,7 +76,22 @@ function addStep(text, state = "done") {
 function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function renderPlan(plan) {
+  activePlan = plan;
   const flightSearch = plan.flightSearch;
+  const approval = plan.approvalQueue;
+  const approvalCard = approval
+    ? `<section class="approval-card">
+        <div class="approval-heading"><div><span>CONTROLLED AUTONOMY</span><h3>Fila de decisões do cliente</h3><p>${approval.policy.mode} · limite de R$ ${approval.policy.maxAutoActionBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })} por ação</p></div><strong>${approval.actions.filter((item) => item.status === "pending_approval").length}<small>pendentes</small></strong></div>
+        <div class="approval-list">${approval.actions.map((item) => `<article class="${item.status}">
+          <div class="approval-status"><em>${item.category}</em><b>${item.status.replaceAll("_", " ")}</b></div>
+          <h4>${item.title}</h4><p><b>Gatilho:</b> ${item.trigger}</p><span>${item.target}</span>
+          <div class="approval-meta"><span>${item.estimatedDeltaBrl === null ? "Custo pendente" : `${item.estimatedDeltaBrl === 0 ? "Sem aumento" : `+ R$ ${item.estimatedDeltaBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}`} · ${item.reserveCovers ? "coberto" : "não coberto"}</span><span>${item.autoEligible ? "Dentro do limite autônomo" : "Acima do limite autônomo"}</span></div>
+          ${item.status === "pending_approval" ? `<div class="approval-actions"><button type="button" data-session-id="${approval.sessionId}" data-action-id="${item.id}" data-decision="authorized">Autorizar preparação</button><button type="button" class="reject" data-session-id="${approval.sessionId}" data-action-id="${item.id}" data-decision="rejected">Rejeitar</button></div>` : `<div class="decision-stamp">${item.status === "authorized" ? "Autorização registrada" : "Recusa registrada"} · ${item.decidedAt ? new Date(item.decidedAt).toLocaleString() : ""}</div>`}
+        </article>`).join("")}</div>
+        <div class="approval-ledger"><b>Audit ledger</b><span>${approval.ledger.length} evento(s) · atualizado ${new Date(approval.updatedAt).toLocaleString()}</span></div>
+        <small>${approval.policy.rule} ${approval.disclaimer}</small>
+      </section>`
+    : "";
   const hotels = plan.hotelSearch;
   const hotelCard = hotels?.hotels?.length
     ? `<section class="hotel-layer">
@@ -164,7 +180,7 @@ function renderPlan(plan) {
       </div>`
     : `<div class="flight-results"><h4>Flight search unavailable</h4><p>${flightSearch?.reason || "No offers returned."}</p></div>`;
   planNode.innerHTML = `
-    ${decisionCard}${riskCard}${contingencyCard}${budgetCard}${hotelCard}<h3>${plan.headline}</h3>
+    ${decisionCard}${approvalCard}${riskCard}${contingencyCard}${budgetCard}${hotelCard}<h3>${plan.headline}</h3>
     <p>${plan.destination} · ${plan.planningNote}</p>
     <div class="plan-grid">
       <div><b>Stay near</b><br>${plan.recommendedAreas.slice(0,2).join(" or ")}</div>
@@ -186,6 +202,7 @@ form.addEventListener("submit", async (event) => {
   tripInput.budget = Number(tripInput.budget);
   tripInput.hotelRadiusKm = Number(tripInput.hotelRadiusKm);
   tripInput.maxCommuteMinutes = Number(tripInput.maxCommuteMinutes);
+  tripInput.autonomyLimitBrl = Number(tripInput.autonomyLimitBrl);
   steps.innerHTML = "";
   planNode.classList.add("hidden");
   payButton.classList.add("hidden");
@@ -213,6 +230,28 @@ form.addEventListener("submit", async (event) => {
       : "Complete payment with npm run pay";
     payButton.disabled = runtimeMode !== "local";
     payButton.classList.remove("hidden");
+  }
+});
+
+planNode.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action-id]");
+  if (!button || !activePlan) return;
+  button.disabled = true;
+  const original = button.textContent;
+  button.textContent = "Registrando…";
+  try {
+    const response = await fetch(`/api/approval-sessions/${button.dataset.sessionId}/actions/${button.dataset.actionId}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ decision: button.dataset.decision, actor: connectedWallet?.address || "traveler-ui" }),
+    });
+    if (!response.ok) throw new Error(`Approval API returned ${response.status}`);
+    activePlan.approvalQueue = await response.json();
+    renderPlan(activePlan);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = original;
+    window.alert(error.message);
   }
 });
 

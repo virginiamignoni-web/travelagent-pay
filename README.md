@@ -24,6 +24,8 @@ The contingency playbook turns the risk findings into conditional actions for fl
 
 The hotel geography layer queries OpenStreetMap through the Overpass API for mapped accommodation inside the client-selected event radius. It ranks results by proximity, plots them around the event, and links to each mapped object. These are real geographic records but not commercial offers: tier prices are estimates and availability, taxes, room details, quality, and cancellation remain unverified until Duffel Stays access is enabled.
 
+The controlled-autonomy layer creates a server-side approval session from the contingency playbook. Travelers can authorize or reject each proposed action through real API endpoints, and every decision is timestamped in an in-memory audit ledger. Authorization records permission to prepare the change; it does not claim to issue tickets, reserve rooms, charge suppliers, or alter bookings before those commercial APIs are connected.
+
 The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Why it exists
