@@ -325,6 +325,10 @@ test("links every voucher to an auditable receipt and passenger notification", (
   assert.match(voucher.auditReceipt.hash, /^[a-f0-9]{64}$/);
   assert.equal(voucher.auditReceipt.timestamp, voucher.issuedAt);
   assert.equal(voucher.settlement.transactionHash, null);
+  assert.equal(voucher.settlement.onChain, false);
+  assert.equal(voucher.settlement.fundingSource, "none_demo_credit");
+  assert.equal(voucher.issuer.name, "BIT Travels Journey Protection Engine");
+  assert.equal(voucher.issuer.authenticatedExternalInstruction, false);
   assert.match(voucher.notification.message, /Art\. 27, inciso II/);
   assert.match(voucher.notification.message, /voo TP88/);
   assert.equal(voucher.internalReference, "BIT987654");

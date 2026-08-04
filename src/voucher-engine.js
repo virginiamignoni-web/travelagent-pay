@@ -43,6 +43,7 @@ function issueVoucher(session, type) {
   const flightReference = session.flight.number || session.flight.airline || "voo não identificado";
   const bookingReference = session.bookingReference || "reserva não informada";
   const internalReference = session.internalReference || "referência BIT não informada";
+  const issuer = session.issuer || { name: "BIT Travels Journey Protection Engine", type: "platform_testnet_demo", airline: session.flight.airline || null, authenticatedExternalInstruction: false };
   const reservationMessage = session.internalReference ? `à reserva BIT ${session.internalReference}${session.bookingReference ? ` e ao PNR ${session.bookingReference}` : ""}` : session.bookingReference ? `ao PNR ${session.bookingReference}` : "à viagem monitorada";
   const auditRecord = {
     event: "benefit_issued",
@@ -57,6 +58,7 @@ function issueVoucher(session, type) {
     internalReference,
     legalBasis: rule.legalBasis,
     travelerWallet: session.travelerWallet,
+    issuer,
   };
   const voucher = {
     id,
@@ -72,6 +74,7 @@ function issueVoucher(session, type) {
     issuedAt,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     travelerWallet: session.travelerWallet,
+    issuer,
     flightReference,
     bookingReference,
     internalReference,
@@ -94,7 +97,8 @@ function issueVoucher(session, type) {
       mode: "testnet_voucher_demo",
       onChain: false,
       transactionHash: null,
-      note: "Direito e resgate funcionais no MVP. A liquidação on-chain ao estabelecimento é a próxima integração Stellar.",
+      fundingSource: "none_demo_credit",
+      note: "Crédito demonstrativo: nenhum USDC foi transferido. O audit hash comprova integridade do registro, não liquidação na Stellar.",
     },
     audit: [{ at: issuedAt, event: "voucher_issued", actor: "BIT Travels Journey Protection Engine" }],
   };

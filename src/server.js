@@ -183,7 +183,14 @@ app.get("/api/voucher-wallet", (req, res) => {
   const reservations = listReservations({ travelerWallet });
   const vouchers = findVouchers({ travelerWallet }).map((voucher) => {
     const reservation = reservations.find((item) => item.journeyProtection?.sessionId === voucher.protectionSessionId);
-    return { ...voucher, internalReference: voucher.internalReference || reservation?.internalReference || null, bookingReference: voucher.bookingReference || reservation?.supplierReferences?.pnr || null };
+    const storedPnr = voucher.bookingReference && !/não informada/i.test(voucher.bookingReference) ? voucher.bookingReference : null;
+    return {
+      ...voucher,
+      internalReference: voucher.internalReference && !/não informada/i.test(voucher.internalReference) ? voucher.internalReference : reservation?.internalReference || null,
+      bookingReference: storedPnr || reservation?.supplierReferences?.pnr || null,
+      issuer: voucher.issuer || { name: "BIT Travels Journey Protection Engine", type: "platform_testnet_demo", airline: reservation?.flight?.airline || null, authenticatedExternalInstruction: false },
+      settlement: { fundingSource: "none_demo_credit", ...voucher.settlement },
+    };
   });
   const issued = vouchers.filter((item) => item.status === "issued");
   const redeemed = vouchers.filter((item) => item.status === "redeemed");
