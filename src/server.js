@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 import { buildPreview, buildPremiumPlan } from "./trip-engine.js";
 import { createPaymentGate } from "./payment.js";
-import { searchFlightOffers } from "./duffel.js";
+import { createDuffelOrder, searchFlightOffers } from "./duffel.js";
 import { geocodeEvent } from "./geo.js";
 import { compareMobility } from "./mobility.js";
 import { buildDecisionBrief } from "./decision-engine.js";
@@ -67,6 +67,25 @@ app.post("/api/reservations", (req, res, next) => {
   } catch (error) {
     return next(error);
   }
+});
+
+app.post("/api/reservations/:reservationId/duffel-order", async (req, res, next) => {
+  try {
+    const reservation = getReservation(req.params.reservationId);
+    if (!reservation) return res.status(404).json({ error: "Reservation was not found or expired" });
+    if (reservation.supplierReferences?.duffelOrderId) return res.status(409).json({ error: "A Duffel order already exists for this trip" });
+    const order = await createDuffelOrder({ offerId: reservation.flight?.id, passengers: req.body.passengers, internalReference: reservation.internalReference });
+    reservation.supplierReferences = {
+      pnr: order.bookingReference,
+      duffelOrderId: order.id,
+      ticketNumbers: order.documents.map((document) => document.uniqueIdentifier).filter(Boolean),
+    };
+    reservation.duffelOrder = order;
+    reservation.status = order.status === "confirmed" ? "confirmed_duffel_test" : "pending_duffel_test";
+    reservation.supplierExecution.flightTicketIssued = order.documents.length > 0;
+    reservation.notice = "Duffel Order criada em Test mode. Nenhuma reserva real ou movimentação de dinheiro ocorreu.";
+    return res.status(order.status === "pending" ? 202 : 201).json(saveReservation(reservation));
+  } catch (error) { return next(error); }
 });
 
 app.get("/api/protection-sessions/:sessionId", (req, res) => {

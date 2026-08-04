@@ -12,6 +12,7 @@ import { createApprovalSession, decideApprovalAction } from "../src/approval-eng
 import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
 import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
+import { createDuffelOrder } from "../src/duffel.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -296,4 +297,27 @@ test("creates an auditable sandbox reservation only after explicit selection", (
   const listed = listReservations({ travelerWallet: "GTEST-MY-TRIPS" });
   assert.equal(listed.length, 1);
   assert.equal(listed[0].trip.destination, "Lisboa");
+});
+
+test("creates a Duffel test order from a refreshed offer", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url, options });
+    if (url.endsWith("/offers/off_test")) return { ok: true, status: 200, json: async () => ({ data: { id: "off_test", live_mode: false, expires_at: "2099-01-01T00:00:00Z", total_amount: "321.00", total_currency: "EUR", passenger_identity_documents_required: false, passengers: [{ id: "pas_test", type: "adult" }] } }) };
+    return { ok: true, status: 201, json: async () => ({ data: { id: "ord_test", booking_reference: "ABC123", live_mode: false, total_amount: "321.00", total_currency: "EUR", documents: [{ type: "electronic_ticket", unique_identifier: "1234567890", passenger_ids: ["pas_test"] }], created_at: "2026-08-04T12:00:00Z", payment_status: "paid", available_actions: [] } }) };
+  };
+  const order = await createDuffelOrder({ offerId: "off_test", internalReference: "BIT123456", token: "test-token", fetchImpl, passengers: [{ title: "ms", gender: "f", givenName: "Virginia", familyName: "Evaristo", bornOn: "1990-01-01", email: "virginia@example.com", phoneNumber: "+5511999999999" }] });
+  assert.equal(order.id, "ord_test");
+  assert.equal(order.bookingReference, "ABC123");
+  assert.equal(order.liveMode, false);
+  const body = JSON.parse(calls[1].options.body);
+  assert.equal(body.data.type, "instant");
+  assert.deepEqual(body.data.selected_offers, ["off_test"]);
+  assert.equal(body.data.payments[0].type, "balance");
+  assert.equal(body.data.passengers[0].id, "pas_test");
+});
+
+test("blocks live Duffel offers in the test integration", async () => {
+  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ data: { id: "off_live", live_mode: true, expires_at: "2099-01-01T00:00:00Z", passengers: [] } }) });
+  await assert.rejects(() => createDuffelOrder({ offerId: "off_live", token: "test-token", fetchImpl }), /Live Duffel offers are blocked/);
 });

@@ -254,6 +254,8 @@ function openReservationReview() {
   const selectedMobilityId = selectedValue("selectedMobility", activePlan.mobility?.recommendedMode);
   const hotel = hotels.find((item) => item.id === selectedHotelId) || null;
   const mobility = modes.find((item) => item.id === selectedMobilityId) || modes[0];
+  const passengerCount = Math.max(1, Number(tripInput?.travelers) || 1);
+  const passengerFields = flight ? Array.from({ length: passengerCount }, (_, index) => `<fieldset class="passenger-fields"><legend>Passageiro ${index + 1} · Duffel Test mode</legend><div class="passenger-grid"><label>Tratamento<select name="passengerTitle"><option value="ms">Sra.</option><option value="mrs">Sra. (casada)</option><option value="mr">Sr.</option><option value="miss">Srta.</option></select></label><label>Gênero<select name="passengerGender"><option value="f">Feminino</option><option value="m">Masculino</option></select></label><label>Nome<input name="passengerGivenName" required maxlength="20"></label><label>Sobrenome<input name="passengerFamilyName" required maxlength="20"></label><label>Nascimento<input name="passengerBornOn" type="date" required></label><label>E-mail<input name="passengerEmail" type="email" required></label><label>Telefone internacional<input name="passengerPhone" type="tel" placeholder="+5511999999999" required></label></div></fieldset>`).join("") : "";
   reservationReview.innerHTML = `<div class="reservation-review-card">
     <div class="review-grid">
       <article><span>VOO</span><h3>${flight ? flight.airline : "A definir"}</h3><p>${flight ? `${flight.currency} ${flight.amount.toFixed(2)} · ${flight.stops === 0 ? "direto" : `${flight.stops} escala(s)`}` : "Busca indisponível; não será emitido."}</p></article>
@@ -261,6 +263,7 @@ function openReservationReview() {
       <article><span>MOBILIDADE</span><h3>${mobility?.label || "A definir"}</h3><p>${mobility ? `${mobility.estimatedMinutes} min · EUR ${mobility.estimatedTripCostEur.toFixed(2)}` : "Seleção pendente."}</p></article>
       <article><span>ORÇAMENTO TOTAL</span><h3>R$ ${activePlan.completeBudget?.requested?.totalBrl?.toLocaleString(undefined, {minimumFractionDigits:2}) || "—"}</h3><p>Inclui reserva de emergência; valores de hotel podem ser estimados.</p></article>
     </div>
+    ${flight ? `<section class="duffel-passengers"><span>EMISSÃO AÉREA · DUFFEL ORDERS</span><h3>Dados dos passageiros</h3><p>Enviados à Duffel somente após sua confirmação. Não informe passaporte nesta versão.</p>${passengerFields}</section>` : ""}
     <label class="confirmation-check"><input id="accept-reservation" type="checkbox"> Confirmo estas escolhas e entendo que esta versão opera em sandbox/testnet, sem emissão ou cobrança real de fornecedores.</label>
     <button id="confirm-reservation" type="button" data-flight-id="${flight?.id || ""}" data-hotel-id="${hotel?.id || ""}" data-mobility-id="${mobility?.id || ""}">Confirmar reserva demonstrativa →</button>
     <small>Nenhuma compra, alteração ou cancelamento será executado sem aprovação explícita.</small>
@@ -507,6 +510,18 @@ reservationReview.addEventListener("click", async (event) => {
   if (!button || !activePlan) return;
   const acceptedTerms = document.querySelector("#accept-reservation")?.checked;
   if (!acceptedTerms) return window.alert("Confirme os termos da reserva demonstrativa para continuar.");
+  const passengerFields = [...reservationReview.querySelectorAll(".passenger-fields")];
+  const passengers = passengerFields.map((field) => ({
+    title: field.querySelector('[name="passengerTitle"]').value,
+    gender: field.querySelector('[name="passengerGender"]').value,
+    givenName: field.querySelector('[name="passengerGivenName"]').value.trim(),
+    familyName: field.querySelector('[name="passengerFamilyName"]').value.trim(),
+    bornOn: field.querySelector('[name="passengerBornOn"]').value,
+    email: field.querySelector('[name="passengerEmail"]').value.trim(),
+    phoneNumber: field.querySelector('[name="passengerPhone"]').value.trim(),
+  }));
+  const invalidPassenger = passengers.find((item) => !item.givenName || !item.familyName || !/^\d{4}-\d{2}-\d{2}$/.test(item.bornOn) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email) || !/^\+[1-9]\d{7,14}$/.test(item.phoneNumber));
+  if (invalidPassenger) return window.alert("Confira os dados dos passageiros. O telefone deve estar no formato internacional, como +5511999999999.");
   button.disabled = true;
   button.textContent = "Criando viagem ativa…";
   try {
@@ -515,12 +530,19 @@ reservationReview.addEventListener("click", async (event) => {
       headers: { "content-type": "application/json", ...(connectedWallet ? { "x-traveler-wallet": connectedWallet.address } : {}) },
       body: JSON.stringify({ input: tripInput, plan: activePlan, acceptedTerms, travelerWallet: connectedWallet?.address || null, selections: { flightId: button.dataset.flightId || null, hotelId: button.dataset.hotelId || null, mobilityMode: button.dataset.mobilityId } }),
     });
-    const reservation = await response.json();
+    let reservation = await response.json();
     if (!response.ok) throw new Error(reservation.detail || `Reservation API returned ${response.status}`);
+    let duffelMessage = "Sem oferta Duffel selecionada; nenhuma order aérea foi criada.";
+    if (reservation.flight?.id) {
+      const orderResponse = await fetch(`/api/reservations/${reservation.reservationId}/duffel-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passengers }) });
+      const orderPayload = await orderResponse.json();
+      if (orderResponse.ok) { reservation = orderPayload; duffelMessage = `Duffel Order ${reservation.supplierReferences.duffelOrderId} criada em Test mode.`; }
+      else duffelMessage = `A viagem BIT foi salva, mas a emissão Duffel não ocorreu: ${orderPayload.detail || orderPayload.error}`;
+    }
     activePlan.reservation = reservation;
     activePlan.approvalQueue = reservation.approvalQueue;
     activePlan.journeyProtection = reservation.journeyProtection;
-    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · SANDBOX</span><h2>Viagem ${reservation.internalReference || reservation.bookingReference} confirmada</h2><p>${reservation.notice}</p><div><b>Referência interna BIT</b><strong>${reservation.internalReference || reservation.bookingReference}</strong></div><div><b>PNR da companhia</b><strong>Não emitido</strong></div><div><b>Duffel Order ID</b><strong>Não criado</strong></div><div><b>Bilhete</b><strong>Não emitido</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><button type="button" data-open-trips>Abrir Minhas viagens →</button><small>A viagem agora está disponível com wallet, comprovante e proteção preparada.</small></div>`;
+    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · DUFFEL TEST MODE</span><h2>Viagem ${reservation.internalReference || reservation.bookingReference} confirmada</h2><p>${duffelMessage}</p><div><b>Referência interna BIT</b><strong>${reservation.internalReference || reservation.bookingReference}</strong></div><div><b>PNR da companhia</b><strong>${reservation.supplierReferences?.pnr || "Não emitido"}</strong></div><div><b>Duffel Order ID</b><strong>${reservation.supplierReferences?.duffelOrderId || "Não criado"}</strong></div><div><b>Bilhete</b><strong>${reservation.supplierReferences?.ticketNumbers?.join(" · ") || "Não emitido"}</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><button type="button" data-open-trips>Abrir Minhas viagens →</button><small>Test mode: nenhuma reserva real ou movimentação de dinheiro.</small></div>`;
   } catch (error) {
     button.disabled = false;
     button.textContent = "Confirmar reserva demonstrativa →";
