@@ -420,10 +420,13 @@ async function openProtectionCenter(reservationId = null) {
 
 function walletVoucherCard(voucher) {
   return `<article class="wallet-voucher ${voucher.status}">
-    <div class="wallet-voucher-top"><span>${voucher.label}</span><b>${voucher.status === "redeemed" ? "REDEEMED" : "AVAILABLE"}</b></div>
-    <div class="wallet-voucher-value"><strong>${voucher.amount}</strong><span>${voucher.asset}<small>Stellar Testnet</small></span></div>
-    <p>${voucher.notification?.message || voucher.legalBasis}</p>
-    <div class="wallet-voucher-meta"><span><b>Valid until</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Merchant categories</b>${voucher.validFor.join(" · ")}</span><span><b>Flight</b>${voucher.flightReference || "Not issued"}</span><span><b>BIT Travels booking</b>${voucher.internalReference || "Unavailable"}</span><span><b>Airline PNR</b>${voucher.bookingReference || "Not issued"}</span><span><b>Responsible issuer</b>${voucher.issuer?.name || "Unidentified"}</span><span><b>Airline linked to flight</b>${voucher.issuer?.airline || "Unavailable"}</span></div>
+    <div class="wallet-voucher-top"><span>${voucher.label}</span><strong>${voucher.amount} <small>${voucher.asset}</small></strong><b>${voucher.status === "redeemed" ? "REDEEMED" : "AVAILABLE"}</b></div>
+    <div class="wallet-voucher-summary">
+      <span><b>Network and issuance</b>Stellar Testnet · Issued under ${voucher.legalBasis || "the applicable passenger assistance rule"}</span>
+      <span><b>Flight</b>${voucher.flightReference || "Unavailable"}</span>
+      <span class="booking-references"><i><b>BIT Travels booking</b>${voucher.internalReference || "Unavailable"}</i><i><b>Airline PNR</b>${voucher.bookingReference || "Unavailable"}</i></span>
+    </div>
+    <div class="wallet-voucher-meta"><span><b>Valid until</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Merchant categories</b>${voucher.validFor.join(" · ")}</span><span><b>Responsible issuer</b>${voucher.issuer?.name || "Unidentified"}</span><span><b>Airline linked to flight</b>${voucher.issuer?.airline || "Unavailable"}</span></div>
     <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar settlement</b><code>${voucher.settlement?.transactionHash || "Not performed · off-chain demonstration credit"}</code><small>${voucher.settlement?.note || ""}</small></div>
   </article>`;
 }

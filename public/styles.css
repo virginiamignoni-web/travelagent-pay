@@ -405,3 +405,38 @@ footer {
   .product-nav a { min-width: 92px; }
   .promise-row span { width: 100%; text-align: center; }
 }
+
+/* Voucher information hierarchy */
+.wallet-voucher-top {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,.16);
+}
+.wallet-voucher-top > span { font: 700 15px/1.2 "Poppins", sans-serif; }
+.wallet-voucher-top > strong { color: #FDB913; font: 800 19px/1 "Poppins", sans-serif; white-space: nowrap; }
+.wallet-voucher-top > strong small { color: #FFFFFF; font-size: 9px; letter-spacing: .8px; }
+.wallet-voucher-summary { position: relative; z-index: 1; display: grid; gap: 8px; margin: 14px 0; }
+.wallet-voucher-summary > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: rgba(255,255,255,.09);
+  color: #FFFFFF;
+  font-size: 10px;
+}
+.wallet-voucher-summary b { display: block; flex: 0 0 135px; color: #FDB913; font-size: 8px; letter-spacing: .45px; text-transform: uppercase; }
+.wallet-voucher-summary .booking-references { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wallet-voucher-summary .booking-references i { display: grid; grid-template-columns: 135px 1fr; align-items: center; font-style: normal; }
+@media(max-width:680px) {
+  .wallet-voucher-top { grid-template-columns: 1fr auto; }
+  .wallet-voucher-top > b { grid-column: 1 / -1; justify-self: start; }
+  .wallet-voucher-summary > span { align-items: flex-start; flex-direction: column; }
+  .wallet-voucher-summary .booking-references { grid-template-columns: 1fr; }
+  .wallet-voucher-summary .booking-references i { grid-template-columns: 1fr; gap: 3px; }
+}
