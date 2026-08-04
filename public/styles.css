@@ -540,6 +540,23 @@ footer {
 .pix-proof b { color: #FDB913; font-size: 9px; letter-spacing: .7px; }
 .pix-proof span, .pix-proof small { color: #FFFFFF; font-size: 9px; }
 .pix-proof code { overflow-wrap: anywhere; color: #FFFFFF; font-size: 10px; }
+.pix-redemption-panel { position: relative; z-index: 1; margin: 13px 0; padding: 14px; border: 1px solid rgba(253,185,19,.5); border-radius: 12px; background: rgba(253,185,19,.1); }
+.pix-redemption-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pix-redemption-heading span { color: #FDB913; font: 800 9px/1 "Poppins",sans-serif; letter-spacing: 1px; }
+.pix-redemption-heading b { padding: 5px 8px; border-radius: 999px; background: #FDB913; color: #003366; font-size: 8px; }
+.pix-redemption-panel > p { margin: 10px 0 0; color: rgba(255,255,255,.8); font-size: 10px; line-height: 1.45; }
+.pix-redemption-panel > button { margin-top: 11px; background: #FDB913; color: #003366; font-size: 10px; }
+.pix-redemption-flow { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin: 13px 0; }
+.pix-redemption-flow i { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 9px; border-radius: 9px; background: rgba(255,255,255,.1); font-style: normal; }
+.pix-redemption-flow i > b { display: grid; flex: 0 0 23px; width: 23px; height: 23px; place-items: center; border-radius: 50%; background: #FDB913; color: #003366; }
+.pix-redemption-flow span { display: flex; min-width: 0; flex-direction: column; color: #FFFFFF; font-size: 9px; font-weight: 800; }
+.pix-redemption-flow small { overflow: hidden; color: rgba(255,255,255,.7); font-size: 8px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.pix-receipt { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.pix-receipt > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; padding: 9px; border-radius: 8px; background: #FFFFFF; color: #003366; font-size: 9px; }
+.pix-receipt b { color: #003366; font-size: 8px; text-transform: uppercase; }
+.pix-receipt code { overflow-wrap: anywhere; font-size: 9px; }
+.pix-receipt small { color: #52677d; font-size: 8px; }
+@media(max-width:620px) { .pix-redemption-flow, .pix-receipt { grid-template-columns: 1fr; } }
 
 @media(max-width:1000px) {
   .wallet-vouchers { grid-template-columns: 1fr; }

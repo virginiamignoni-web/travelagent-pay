@@ -438,7 +438,8 @@ function walletVoucherCard(voucher) {
       <span class="booking-references"><i><b>BIT Travels booking</b>${voucher.internalReference || "Unavailable"}</i><i><b>Airline PNR</b>${voucher.bookingReference || "Unavailable"}</i></span>
     </div>
     <div class="wallet-voucher-meta"><span><b>Valid until</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Merchant categories</b>${voucher.validFor.join(" · ")}</span><span><b>Responsible issuer</b>${voucher.issuer?.name || "Unidentified"}</span><span><b>Airline linked to flight</b>${voucher.issuer?.airline || "Unavailable"}</span></div>
-    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar microsettlement${voucher.settlement?.onChain ? ` · ${voucher.settlement.amount} ${voucher.settlement.asset}` : ""}</b>${voucher.settlement?.transactionHash ? `<a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open transaction ↗</span></a>` : `<code>Not performed · historical off-chain demonstration credit</code>`}<small>${voucher.settlement?.note || ""}</small>${voucher.pixSettlement ? `<b>Pix off-ramp · sandbox paid</b><code>${voucher.pixSettlement.endToEndId}</code><span>R$ ${voucher.pixSettlement.payout.amount} to ${voucher.pixSettlement.merchant.name}</span><small>${voucher.pixSettlement.note}</small>` : ""}</div>
+    ${voucher.pixSettlement ? `<div class="pix-redemption-panel complete"><div class="pix-redemption-heading"><span>PIX OFF-RAMP · SANDBOX</span><b>PAID</b></div><div class="pix-redemption-flow"><i class="done"><b>1</b><span>Voucher validated<small>${voucher.type} · eligible merchant</small></span></i><i class="done"><b>2</b><span>Off-ramp quoted<small>${voucher.pixSettlement.quote.sourceAmountUsdc} USDC → R$ ${voucher.pixSettlement.payout.amount}</small></span></i><i class="done"><b>3</b><span>Pix confirmed<small>${voucher.pixSettlement.merchant.name}</small></span></i></div><div class="pix-receipt"><span><b>Pix endToEndId</b><code>${voucher.pixSettlement.endToEndId}</code></span><span><b>Merchant</b>${voucher.pixSettlement.merchant.name}<small>${voucher.pixSettlement.merchant.cnpj}</small></span><span><b>Payout</b>R$ ${voucher.pixSettlement.payout.amount}<small>Sandbox · no BRL moved</small></span><span><b>Pix audit hash</b><code>${voucher.pixSettlement.auditHash}</code></span></div></div>` : `<div class="pix-redemption-panel"><div class="pix-redemption-heading"><span>BRAZIL REDEMPTION</span><b>READY</b></div><p>Demonstrate merchant validation, USDC/BRL off-ramp quotation, and Pix payout without moving real BRL.</p><button type="button" data-wallet-redeem="${voucher.id}" data-voucher-code="${voucher.code}" data-voucher-type="${voucher.type}">Demonstrate Pix redemption</button></div>`}
+    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar microsettlement${voucher.settlement?.onChain ? ` · ${voucher.settlement.amount} ${voucher.settlement.asset}` : ""}</b>${voucher.settlement?.transactionHash ? `<a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open transaction ↗</span></a>` : `<code>Not performed · historical off-chain demonstration credit</code>`}<small>${voucher.settlement?.note || ""}</small></div>
   </article>`;
 }
 
@@ -694,7 +695,28 @@ protectionContent.addEventListener("click", async (event) => {
   } catch (error) { button.disabled = false; button.textContent = originalLabel; window.alert(error.message); }
 });
 
-walletContent.addEventListener("click", (event) => {
+walletContent.addEventListener("click", async (event) => {
+  const redeemButton = event.target.closest("button[data-wallet-redeem]");
+  if (redeemButton) {
+    const merchant = redeemButton.dataset.voucherType === "hotel"
+      ? { id: "BR-AIRPORT-HOTEL-01", category: "airport_hotel" }
+      : redeemButton.dataset.voucherType === "transport"
+        ? { id: "BR-AIRPORT-MOBILITY-01", category: "airport_transport" }
+        : { id: "BR-AIRPORT-FOOD-01", category: "airport_food" };
+    redeemButton.disabled = true;
+    redeemButton.textContent = "Validating voucher and processing Pix sandbox…";
+    try {
+      const response = await fetch(`/api/vouchers/${redeemButton.dataset.walletRedeem}/redeem`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: redeemButton.dataset.voucherCode, merchantId: merchant.id, merchantCategory: merchant.category }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || result.error || "Pix redemption could not be completed");
+      await openVoucherWallet();
+    } catch (error) {
+      redeemButton.disabled = false;
+      redeemButton.textContent = "Try Pix sandbox redemption again";
+      window.alert(error.message);
+    }
+    return;
+  }
   if (!event.target.closest("button[data-export-audit]") || !activeWalletReport) return;
   const blob = new Blob([JSON.stringify(activeWalletReport, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
