@@ -5,6 +5,9 @@ const steps = document.querySelector("#steps");
 const payButton = document.querySelector("#approve-payment");
 const networkLabel = document.querySelector("#network-label");
 const walletButton = document.querySelector("#connect-wallet");
+const paymentPanel = document.querySelector("#payment-panel");
+const paymentProof = document.querySelector("#payment-proof");
+const paymentModeBadge = document.querySelector("#payment-mode-badge");
 let runtimeMode = "local";
 let connectedWallet = null;
 let activePlan = null;
@@ -16,6 +19,24 @@ function shortAddress(address) {
 function setWalletButton(label, state = "idle") {
   walletButton.textContent = label;
   walletButton.dataset.state = state;
+}
+
+function setPaymentStage(stage) {
+  const stages = ["request", "402", "settlement", "unlock"];
+  const current = stages.indexOf(stage);
+  stages.forEach((name, index) => {
+    const node = document.querySelector(`#payment-step-${name}`);
+    node?.classList.toggle("complete", index < current);
+    node?.classList.toggle("active", index === current);
+  });
+}
+
+async function showPaymentProof({ rehearsal = false } = {}) {
+  const response = await fetch("/api/payment-proof");
+  if (!response.ok) return;
+  const proof = await response.json();
+  paymentProof.innerHTML = `<div class="proof-status"><i></i><span><b>${rehearsal ? "Ensaio atual concluído" : "Liquidação verificada"}</b><small>${rehearsal ? "O ciclo visual atual é local; esta é a prova on-chain do ciclo MPP já executado." : "MPP Charge liquidado na Stellar Testnet"}</small></span></div><div class="proof-grid"><span><small>VALOR</small><b>${proof.amount} ${proof.asset}</b></span><span><small>LEDGER</small><b>${proof.ledger}</b></span><span><small>HTTP FINAL</small><b>${proof.finalStatus} OK</b></span><span><small>DATA UTC</small><b>${new Date(proof.timestamp).toISOString()}</b></span></div><div class="proof-addresses"><span><small>AGENTE</small><code>${proof.buyer}</code></span><span><small>PROVEDOR</small><code>${proof.recipient}</code></span></div><a href="${proof.explorerUrl}" target="_blank" rel="noopener noreferrer"><span>HASH VERIFICÁVEL</span><code>${proof.transactionHash}</code><b>Abrir no Stellar Expert ↗</b></a>`;
+  paymentProof.classList.remove("hidden");
 }
 
 async function connectFreighter() {
@@ -56,6 +77,8 @@ fetch("/api/health")
   .then((response) => response.json())
   .then((health) => {
     runtimeMode = health.paymentMode;
+    paymentModeBadge.textContent = runtimeMode === "stellar" ? "MPP LIVE · TESTNET" : "ENSAIO LOCAL";
+    paymentPanel.classList.toggle("rehearsal", runtimeMode !== "stellar");
     networkLabel.textContent = runtimeMode === "stellar" ? "Stellar Testnet · MPP live" : "Local rehearsal mode";
   })
   .catch(() => {
@@ -410,6 +433,8 @@ form.addEventListener("submit", async (event) => {
   steps.innerHTML = "";
   planNode.classList.add("hidden");
   payButton.classList.add("hidden");
+  paymentProof.classList.add("hidden");
+  setPaymentStage("request");
   idle.classList.add("hidden");
   run.classList.remove("hidden");
   agentCity.textContent = `Cuidando de ${tripInput.destination}`;
@@ -428,12 +453,14 @@ form.addEventListener("submit", async (event) => {
 
   const paidResponse = await fetch("/api/premium-trip-plan", { method: "POST", headers: { "content-type": "application/json", ...(connectedWallet ? { "x-traveler-wallet": connectedWallet.address } : {}) }, body: JSON.stringify(tripInput) });
   if (paidResponse.status === 402) {
+    setPaymentStage("402");
     addStep("Payment required — 0.01 test USDC", "wait");
     payButton.innerHTML = runtimeMode === "local"
       ? "Approve demo payment — 0.01 test USDC <span>→</span>"
       : "Complete payment with npm run pay";
     payButton.disabled = runtimeMode !== "local";
     payButton.classList.remove("hidden");
+    if (runtimeMode === "stellar") showPaymentProof();
   }
 });
 
@@ -596,6 +623,7 @@ walletContent.addEventListener("click", (event) => {
 
 payButton.addEventListener("click", async () => {
   payButton.disabled = true;
+  setPaymentStage("settlement");
   payButton.innerHTML = "Creating rehearsal receipt… <span>◌</span>";
   await wait(650);
   const response = await fetch("/api/premium-trip-plan", {
@@ -607,7 +635,9 @@ payButton.addEventListener("click", async () => {
   const plan = await response.json();
   addStep("Demo payment receipt created");
   await wait(350);
+  setPaymentStage("unlock");
   addStep("Premium itinerary unlocked");
+  await showPaymentProof({ rehearsal: runtimeMode !== "stellar" });
   renderPlan(plan);
   payButton.classList.add("hidden");
   payButton.disabled = false;

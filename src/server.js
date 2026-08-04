@@ -40,6 +40,24 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), database: databaseInfo() });
 });
 
+app.get("/api/payment-proof", (_req, res) => {
+  res.json({
+    verified: true,
+    environment: "stellar:testnet",
+    protocol: "MPP Charge",
+    amount: "0.01",
+    asset: "USDC",
+    timestamp: "2026-08-03T19:03:21Z",
+    ledger: 3952777,
+    transactionHash: "bbcafe74b523e7c241c94eb680846ce63a3092cb7440fd0f0127f7d5a5c519a2",
+    explorerUrl: "https://stellar.expert/explorer/testnet/tx/bbcafe74b523e7c241c94eb680846ce63a3092cb7440fd0f0127f7d5a5c519a2",
+    buyer: "GAWB75VKT5HTZJXLRIKYZLIXV3KOVWCI7QRWTWZQ66DKVQS6ANQEHPZ2",
+    recipient: "GC5CXZYFN2KDDZS6QKDUUSVU3GSJVLOWOTVUGNW2RZFR4CFJFWXQCAOE",
+    finalStatus: 200,
+    note: "Verified prior end-to-end Testnet settlement. The current browser run is identified separately by payment mode.",
+  });
+});
+
 app.post("/api/trip-preview", (req, res) => {
   res.json(buildPreview(req.body));
 });

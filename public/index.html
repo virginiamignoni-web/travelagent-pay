@@ -86,6 +86,16 @@
           <div id="run" class="run-state hidden">
             <div class="agent-heading"><div class="mini-orb"></div><div><b>BIT Concierge ativo</b><span id="agent-city">Planejando</span></div></div>
             <ol id="steps" class="steps"></ol>
+            <section id="payment-panel" class="payment-panel" aria-live="polite">
+              <div class="payment-panel-heading"><div><span>AGENTIC PAYMENT · MPP</span><h3>Ciclo HTTP 402</h3></div><b id="payment-mode-badge">STELLAR TESTNET</b></div>
+              <div class="payment-flow">
+                <article id="payment-step-request"><i>1</i><div><b>Solicitar serviço</b><small>Inteligência premium</small></div></article>
+                <article id="payment-step-402"><i>2</i><div><b>HTTP 402</b><small>0,01 USDC solicitado</small></div></article>
+                <article id="payment-step-settlement"><i>3</i><div><b>MPP settlement</b><small>Pagamento programável</small></div></article>
+                <article id="payment-step-unlock"><i>4</i><div><b>Desbloquear</b><small>Resposta HTTP 200</small></div></article>
+              </div>
+              <div id="payment-proof" class="payment-proof hidden"></div>
+            </section>
             <button id="approve-payment" class="pay-button hidden">Approve 0.01 test USDC <span>→</span></button>
             <div id="plan" class="plan hidden"></div>
           </div>

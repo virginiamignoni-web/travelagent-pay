@@ -4,7 +4,9 @@ BIT Travels Concierge is the autonomous travel-protection layer of BIT Travels. 
 
 `request → HTTP 402 → USDC payment → retry → protected itinerary`
 
-After payment, the prototype can create a real flight offer request in **Duffel Developer Test mode**, compare the returned sandbox offers, and display the five lowest prices. No live booking is created.
+After payment, the prototype can create a real flight offer request in **Duffel Developer Test mode**, compare the returned sandbox offers, and create a Duffel Order after explicit traveler confirmation. Every Duffel operation is forced to Test mode; no live commercial booking or charge is created.
+
+The product UI includes an **Agentic Payment** evidence panel that visualizes `request → HTTP 402 → MPP settlement → HTTP 200 unlock`. It distinguishes the current local rehearsal from a real Testnet run and links the verified transaction hash to Stellar Expert.
 
 The traveler request is centered on the purpose of the trip: origin, event name and address, travel dates, travelers, hotel radius, maximum commute, transport preference, budget, and accommodation preferences. The default hackathon scenario uses Stellar Meridian at Convento do Beato in Lisbon.
 
