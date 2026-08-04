@@ -5,14 +5,14 @@ import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 import { buildPreview, buildPremiumPlan } from "./trip-engine.js";
 import { createPaymentGate } from "./payment.js";
-import { createDuffelOrder, searchFlightOffers } from "./duffel.js";
+import { buildDemoFlightOffers, createDuffelOrder, searchFlightOffers } from "./duffel.js";
 import { geocodeEvent } from "./geo.js";
 import { compareMobility } from "./mobility.js";
 import { buildDecisionBrief } from "./decision-engine.js";
 import { buildCompleteBudget } from "./budget-engine.js";
 import { assessOperationalRisk } from "./risk-engine.js";
 import { buildContingencyPlan } from "./contingency-engine.js";
-import { searchNearbyHotels } from "./hotels.js";
+import { buildDemoHotels, searchNearbyHotels } from "./hotels.js";
 import { createApprovalSession, decideApprovalAction, getApprovalSession } from "./approval-engine.js";
 import { createProtectionSession, getProtectionSession, recordProtectionEvent, redeemVoucher } from "./voucher-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "./reservation-engine.js";
@@ -188,12 +188,13 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
       searchFlightOffers(req.body),
       geocodeEvent(req.body.eventAddress, req.body.hotelRadiusKm),
     ]);
-    plan.flightSearch = flightResult.status === "fulfilled" ? flightResult.value : { available: false, reason: flightResult.reason.message, offers: [] };
+    plan.flightSearch = flightResult.status === "fulfilled" && flightResult.value.offers?.length ? flightResult.value : buildDemoFlightOffers(req.body, flightResult.status === "rejected" ? flightResult.reason.message : flightResult.value?.reason || "No Duffel sandbox offers returned");
     plan.protectionZone = locationResult.status === "fulfilled" ? locationResult.value : { available: false, reason: locationResult.reason.message };
     try {
       plan.hotelSearch = await searchNearbyHotels({ protectionZone: plan.protectionZone, travelStyle: req.body.travelStyle });
+      if (!plan.hotelSearch.hotels?.length) plan.hotelSearch = buildDemoHotels({ protectionZone: plan.protectionZone, travelStyle: req.body.travelStyle, reason: "No mapped hotels returned inside the radius" });
     } catch (error) {
-      plan.hotelSearch = { available: false, reason: error.message, hotels: [], disclaimer: "Hotel locations could not be loaded; no availability or price claim is made." };
+      plan.hotelSearch = buildDemoHotels({ protectionZone: plan.protectionZone, travelStyle: req.body.travelStyle, reason: error.message });
     }
     plan.mobility = compareMobility({
       radiusKm: req.body.hotelRadiusKm,

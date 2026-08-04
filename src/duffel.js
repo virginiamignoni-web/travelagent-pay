@@ -33,6 +33,23 @@ function summarizeOffer(offer) {
   };
 }
 
+export function buildDemoFlightOffers(input = {}, reason = "Duffel sandbox temporarily unavailable") {
+  const origin = requireIata(input.origin || "GRU", "Origin");
+  const destination = requireIata(input.destinationAirport || "LIS", "Destination airport");
+  const departureDate = /^\d{4}-\d{2}-\d{2}$/.test(input.departureDate || "") ? input.departureDate : "2026-09-15";
+  const departure = new Date(`${departureDate}T19:00:00Z`);
+  const makeOffer = (id, airline, flightNumber, amount, duration, stops, departureOffsetHours, elapsedMinutes) => {
+    const departingAt = new Date(departure.getTime() + departureOffsetHours * 3600000);
+    return { id, airline, airlineCode: "ZZ", flightNumber, amount, currency: "EUR", departureAt: departingAt.toISOString(), arrivalAt: new Date(departingAt.getTime() + elapsedMinutes * 60000).toISOString(), duration, stops, expiresAt: null, passengerIds: [], identityDocumentsRequired: false, bookable: false };
+  };
+  const offers = [
+    makeOffer("demo_flight_direct", "Direct route demo", "ZZ101", 780, "PT9H50M", 0, 0, 590),
+    makeOffer("demo_flight_balanced", "Balanced connection demo", "ZZ202", 645, "PT13H20M", 1, 1.5, 800),
+    makeOffer("demo_flight_lowfare", "Low-fare connection demo", "ZZ303", 570, "PT17H10M", 1, 4, 1030),
+  ];
+  return { available: true, fallback: true, environment: "BIT Travels deterministic demo dataset", searched: offers.length, origin, destination, departureDate, returnDate: input.returnDate || null, travelers: Math.max(1, Number(input.travelers) || 1), offers, reason, disclaimer: "Illustrative fallback itineraries for product demonstration only. They are not Duffel offers, schedules, prices, availability, or bookable inventory." };
+}
+
 export async function createDuffelOrder({ offerId, passengers = [], internalReference, token = process.env.DUFFEL_ACCESS_TOKEN, fetchImpl = fetch } = {}) {
   if (!token) throw Object.assign(new Error("Duffel token is not configured"), { statusCode: 503 });
   if (!String(offerId || "").startsWith("off_")) throw Object.assign(new Error("A valid Duffel offer is required"), { statusCode: 400 });

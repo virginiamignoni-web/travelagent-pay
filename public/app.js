@@ -159,7 +159,7 @@ function renderPlan(plan) {
   const hotels = plan.hotelSearch;
   const hotelCard = hotels?.hotels?.length
     ? `<section class="hotel-layer">
-        <div class="hotel-heading"><div><span>EVENT-CENTERED HOTEL LAYER</span><h3>${hotels.hotels.length} mapped options inside ${hotels.radiusKm} km</h3></div><strong>${hotels.found} found</strong></div>
+        <div class="hotel-heading"><div><span>EVENT-CENTERED HOTEL LAYER</span><h3>${hotels.hotels.length} ${hotels.fallback ? "demo scenarios" : "mapped options"} inside ${hotels.radiusKm} km</h3></div><strong>${hotels.fallback ? "DEMO DATA" : `${hotels.found} found`}</strong></div>
         <div class="hotel-map"><i class="event-pin" style="left:50%;top:50%">★</i>${hotels.hotels.map((hotel, index) => `<i class="hotel-pin" style="left:${50 + Math.max(-43, Math.min(43, (hotel.longitude - plan.protectionZone.center.longitude) / (plan.protectionZone.boundingBox.east - plan.protectionZone.center.longitude) * 43))}%;top:${50 - Math.max(-43, Math.min(43, (hotel.latitude - plan.protectionZone.center.latitude) / (plan.protectionZone.boundingBox.north - plan.protectionZone.center.latitude) * 43))}%">${index + 1}</i>`).join("")}<small>Event-centered relative map · not a routing map</small></div>
         <div class="hotel-grid">${hotels.hotels.map((hotel, index) => `<article class="selectable-option"><label class="option-choice"><input type="radio" name="selectedHotel" value="${hotel.id}" ${index === 0 ? "checked" : ""}> Selecionar</label><div><em>${index + 1}</em><b>${hotel.name}</b></div><strong>${hotel.distanceKm} km</strong><p>${hotel.type.replaceAll("_", " ")} ${hotel.stars ? `· ${hotel.stars} stars` : ""}</p><span>Tier estimate R$ ${hotel.estimatedNightlyBrl.toLocaleString()}/night · fit ${hotel.fitScore}</span><a href="${hotel.mapUrl}" target="_blank" rel="noopener noreferrer">Open mapped location →</a></article>`).join("")}</div>
         <small>${hotels.disclaimer} Source: ${hotels.source}.</small>
@@ -240,10 +240,10 @@ function renderPlan(plan) {
   const flightCards = flightSearch?.offers?.length
     ? `<div class="flight-results">
         <h4>Top flight options · ${flightSearch.origin} → ${flightSearch.destination}</h4>
-        <p>${flightSearch.searched} sandbox offers compared. Showing the five lowest prices.</p>
+        <p>${flightSearch.fallback ? "3 illustrative fallback scenarios compared because Duffel is unavailable." : `${flightSearch.searched} sandbox offers compared. Showing the five lowest prices.`}</p>
         ${flightSearch.offers.map((offer, index) => `<article class="flight-card selectable-option">
           <label class="option-choice"><input type="radio" name="selectedFlight" value="${offer.id}" ${index === 0 ? "checked" : ""}> Selecionar</label>
-          <div><b>${offer.airline}</b><span>${offer.stops === 0 ? "Direct" : `${offer.stops} stop${offer.stops > 1 ? "s" : ""}`}</span></div>
+          <div><b>${offer.airline}</b><span>${flightSearch.fallback ? "DEMO · NOT BOOKABLE" : offer.stops === 0 ? "Direct" : `${offer.stops} stop${offer.stops > 1 ? "s" : ""}`}</span></div>
           <strong>${offer.currency} ${offer.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
           <small>${new Date(offer.departureAt).toLocaleString()} → ${new Date(offer.arrivalAt).toLocaleString()}</small>
         </article>`).join("")}
@@ -277,8 +277,9 @@ function openReservationReview() {
   const selectedMobilityId = selectedValue("selectedMobility", activePlan.mobility?.recommendedMode);
   const hotel = hotels.find((item) => item.id === selectedHotelId) || null;
   const mobility = modes.find((item) => item.id === selectedMobilityId) || modes[0];
+  const bookableFlight = Boolean(flight?.id?.startsWith("off_"));
   const passengerCount = Math.max(1, Number(tripInput?.travelers) || 1);
-  const passengerFields = flight ? Array.from({ length: passengerCount }, (_, index) => `<fieldset class="passenger-fields"><legend>Passageiro ${index + 1} · Duffel Test mode</legend><div class="passenger-grid"><label>Tratamento<select name="passengerTitle"><option value="ms">Sra.</option><option value="mrs">Sra. (casada)</option><option value="mr">Sr.</option><option value="miss">Srta.</option></select></label><label>Gênero<select name="passengerGender"><option value="f">Feminino</option><option value="m">Masculino</option></select></label><label>Nome<input name="passengerGivenName" required maxlength="20"></label><label>Sobrenome<input name="passengerFamilyName" required maxlength="20"></label><label>Nascimento<input name="passengerBornOn" type="date" required></label><label>E-mail<input name="passengerEmail" type="email" required></label><label>Telefone internacional<input name="passengerPhone" type="tel" placeholder="+5511999999999" required></label></div></fieldset>`).join("") : "";
+  const passengerFields = bookableFlight ? Array.from({ length: passengerCount }, (_, index) => `<fieldset class="passenger-fields"><legend>Passageiro ${index + 1} · Duffel Test mode</legend><div class="passenger-grid"><label>Tratamento<select name="passengerTitle"><option value="ms">Sra.</option><option value="mrs">Sra. (casada)</option><option value="mr">Sr.</option><option value="miss">Srta.</option></select></label><label>Gênero<select name="passengerGender"><option value="f">Feminino</option><option value="m">Masculino</option></select></label><label>Nome<input name="passengerGivenName" required maxlength="20"></label><label>Sobrenome<input name="passengerFamilyName" required maxlength="20"></label><label>Nascimento<input name="passengerBornOn" type="date" required></label><label>E-mail<input name="passengerEmail" type="email" required></label><label>Telefone internacional<input name="passengerPhone" type="tel" placeholder="+5511999999999" required></label></div></fieldset>`).join("") : "";
   reservationReview.innerHTML = `<div class="reservation-review-card">
     <div class="review-grid">
       <article><span>VOO</span><h3>${flight ? flight.airline : "A definir"}</h3><p>${flight ? `${flight.currency} ${flight.amount.toFixed(2)} · ${flight.stops === 0 ? "direto" : `${flight.stops} escala(s)`}` : "Busca indisponível; não será emitido."}</p></article>
@@ -286,7 +287,7 @@ function openReservationReview() {
       <article><span>MOBILIDADE</span><h3>${mobility?.label || "A definir"}</h3><p>${mobility ? `${mobility.estimatedMinutes} min · EUR ${mobility.estimatedTripCostEur.toFixed(2)}` : "Seleção pendente."}</p></article>
       <article><span>ORÇAMENTO TOTAL</span><h3>R$ ${activePlan.completeBudget?.requested?.totalBrl?.toLocaleString(undefined, {minimumFractionDigits:2}) || "—"}</h3><p>Inclui reserva de emergência; valores de hotel podem ser estimados.</p></article>
     </div>
-    ${flight ? `<section class="duffel-passengers"><span>EMISSÃO AÉREA · DUFFEL ORDERS</span><h3>Dados dos passageiros</h3><p>Enviados à Duffel somente após sua confirmação. Não informe passaporte nesta versão.</p>${passengerFields}</section>` : ""}
+    ${bookableFlight ? `<section class="duffel-passengers"><span>EMISSÃO AÉREA · DUFFEL ORDERS</span><h3>Dados dos passageiros</h3><p>Enviados à Duffel somente após sua confirmação. Não informe passaporte nesta versão.</p>${passengerFields}</section>` : flight ? `<section class="duffel-passengers"><span>CENÁRIO DE CONTINGÊNCIA</span><h3>Comparação disponível; emissão desativada</h3><p>Esta alternativa pertence ao dataset demonstrativo e não será enviada à Duffel. Faça uma nova busca quando o sandbox estiver acessível.</p></section>` : ""}
     <label class="confirmation-check"><input id="accept-reservation" type="checkbox"> Confirmo estas escolhas e entendo que esta versão opera em sandbox/testnet, sem emissão ou cobrança real de fornecedores.</label>
     <button id="confirm-reservation" type="button" data-flight-id="${flight?.id || ""}" data-hotel-id="${hotel?.id || ""}" data-mobility-id="${mobility?.id || ""}">Confirmar reserva demonstrativa →</button>
     <small>Nenhuma compra, alteração ou cancelamento será executado sem aprovação explícita.</small>
@@ -560,12 +561,12 @@ reservationReview.addEventListener("click", async (event) => {
     let reservation = await response.json();
     if (!response.ok) throw new Error(reservation.detail || `Reservation API returned ${response.status}`);
     let duffelMessage = "Sem oferta Duffel selecionada; nenhuma order aérea foi criada.";
-    if (reservation.flight?.id) {
+    if (reservation.flight?.id?.startsWith("off_")) {
       const orderResponse = await fetch(`/api/reservations/${reservation.reservationId}/duffel-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passengers }) });
       const orderPayload = await orderResponse.json();
       if (orderResponse.ok) { reservation = orderPayload; duffelMessage = `Duffel Order ${reservation.supplierReferences.duffelOrderId} criada em Test mode.`; }
       else duffelMessage = `A viagem BIT foi salva, mas a emissão Duffel não ocorreu: ${orderPayload.detail || orderPayload.error}`;
-    }
+    } else if (reservation.flight?.id?.startsWith("demo_")) duffelMessage = "Cenário demonstrativo salvo sem emissão: nenhuma oferta comercial foi enviada à Duffel.";
     activePlan.reservation = reservation;
     activePlan.approvalQueue = reservation.approvalQueue;
     activePlan.journeyProtection = reservation.journeyProtection;

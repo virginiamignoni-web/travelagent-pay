@@ -7,12 +7,12 @@ import { buildDecisionBrief, rankFlightOffers } from "../src/decision-engine.js"
 import { buildCompleteBudget } from "../src/budget-engine.js";
 import { assessOperationalRisk } from "../src/risk-engine.js";
 import { buildContingencyPlan } from "../src/contingency-engine.js";
-import { searchNearbyHotels } from "../src/hotels.js";
+import { buildDemoHotels, searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
 import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
 import { createProtectionSession, recordProtectionEvent, redeemVoucher } from "../src/voucher-engine.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
-import { createDuffelOrder } from "../src/duffel.js";
+import { buildDemoFlightOffers, createDuffelOrder } from "../src/duffel.js";
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -320,4 +320,20 @@ test("creates a Duffel test order from a refreshed offer", async () => {
 test("blocks live Duffel offers in the test integration", async () => {
   const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ data: { id: "off_live", live_mode: true, expires_at: "2099-01-01T00:00:00Z", passengers: [] } }) });
   await assert.rejects(() => createDuffelOrder({ offerId: "off_live", token: "test-token", fetchImpl }), /Live Duffel offers are blocked/);
+});
+
+test("provides clearly labeled, non-bookable flight fallbacks", () => {
+  const result = buildDemoFlightOffers({ origin: "GRU", destinationAirport: "LIS", departureDate: "2026-09-15", travelers: 1 }, "fetch failed");
+  assert.equal(result.fallback, true);
+  assert.equal(result.offers.length, 3);
+  assert.equal(result.offers.every((offer) => offer.bookable === false && offer.id.startsWith("demo_")), true);
+  assert.match(result.disclaimer, /not Duffel offers/);
+});
+
+test("provides clearly labeled hotel scenarios inside the selected demo radius", () => {
+  const result = buildDemoHotels({ protectionZone: { center: { latitude: 38.735, longitude: -9.106 }, radiusKm: 5 }, travelStyle: "Balanced", reason: "fetch failed" });
+  assert.equal(result.fallback, true);
+  assert.equal(result.hotels.length, 3);
+  assert.equal(result.hotels.every((hotel) => hotel.bookable === false && hotel.distanceKm <= 5), true);
+  assert.match(result.disclaimer, /synthetic/);
 });

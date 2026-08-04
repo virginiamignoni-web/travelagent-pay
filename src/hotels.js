@@ -10,6 +10,19 @@ function estimatedNightlyBrl(style = "Balanced") {
   return 620;
 }
 
+export function buildDemoHotels({ protectionZone, travelStyle, reason = "Hotel geography service temporarily unavailable" } = {}) {
+  const center = protectionZone?.center;
+  if (!center) return { available: false, reason, hotels: [] };
+  const nightly = estimatedNightlyBrl(travelStyle);
+  const templates = [
+    ["BIT Demo Stay · Beato", "hotel", 0.8, 92, 0.006, 0.004],
+    ["BIT Demo Stay · Marvila", "apartment", 2.1, 84, 0.014, -0.011],
+    ["BIT Demo Stay · Oriente", "hotel", 4.4, 73, 0.031, 0.025],
+  ];
+  const hotels = templates.filter(([, , distance]) => distance <= protectionZone.radiusKm).map(([name, type, distanceKm, fitScore, latDelta, lonDelta], index) => ({ id: `demo_hotel_${index + 1}`, name, type, latitude: center.latitude + latDelta, longitude: center.longitude + lonDelta, distanceKm, stars: null, wheelchair: null, website: null, phone: null, estimatedNightlyBrl: nightly + index * 90, mapUrl: `https://www.openstreetmap.org/?mlat=${center.latitude + latDelta}&mlon=${center.longitude + lonDelta}#map=15/${center.latitude + latDelta}/${center.longitude + lonDelta}`, fitScore, bookable: false }));
+  return { available: true, fallback: true, source: "BIT Travels deterministic demo dataset", fetchedAt: new Date().toISOString(), radiusKm: protectionZone.radiusKm, found: hotels.length, hotels, reason, disclaimer: "Illustrative hotel scenarios for interface testing only. Names, prices and availability are synthetic; the map positions demonstrate the selected event radius." };
+}
+
 export async function searchNearbyHotels({ protectionZone, travelStyle, limit = 8 } = {}) {
   const center = protectionZone?.center;
   if (!center) return { available: false, reason: "Event center is unavailable", hotels: [] };
