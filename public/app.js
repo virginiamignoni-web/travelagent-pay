@@ -193,10 +193,12 @@ function renderPlan(plan) {
   const risk = plan.riskAssessment;
   const riskCard = risk
     ? `<section class="risk-card ${risk.riskLevel}">
-        <div class="risk-heading"><div><span>OPERATIONAL RISK LAYER</span><h3>${risk.riskLevel.toUpperCase()} RISK</h3><p>${risk.summary}</p></div><strong>${risk.riskScore}<small>/100 risk</small></strong></div>
-        ${risk.flightComparison?.triggered ? `<div class="flight-tradeoff"><b>CHEAPEST vs MOST DIRECT</b><span>${risk.flightComparison.cheapest.airline}: ${risk.flightComparison.cheapest.durationHours}h · ${risk.flightComparison.mostDirect.airline}: ${risk.flightComparison.mostDirect.durationHours}h</span><strong>Save ${risk.flightComparison.extraHours}h for ${risk.flightComparison.priceDifference >= 0 ? "+" : "−"}${risk.flightComparison.mostDirect.currency} ${Math.abs(risk.flightComparison.priceDifference).toFixed(2)}</strong></div>` : ""}
-        <div class="risk-list">${risk.risks.map((item) => `<article class="${item.severity}"><div><em>${item.severity}</em><b>${item.title}</b></div><p>${item.evidence} ${item.impact}</p><span>Mitigation: ${item.mitigation}</span></article>`).join("")}</div>
-        <small>${risk.disclaimer}</small>
+        <div class="risk-heading"><div><span>OPERATIONAL RISK LAYER</span>${["high", "critical"].includes(risk.riskLevel) ? `<h3>RISCO ${risk.riskLevel === "critical" ? "CRÍTICO" : "ALTO"}</h3><p>${risk.risks.find((item) => ["critical", "high"].includes(item.severity))?.title || risk.summary}</p>` : ""}</div><strong>${risk.riskScore}<small>/100 risk</small></strong></div>
+        <details class="risk-analysis"><summary>Ver análise completa · ${risk.risks.length} alerta(s)</summary>
+          ${risk.flightComparison?.triggered ? `<div class="flight-tradeoff"><b>CHEAPEST vs MOST DIRECT</b><span>${risk.flightComparison.cheapest.airline}: ${risk.flightComparison.cheapest.durationHours}h · ${risk.flightComparison.mostDirect.airline}: ${risk.flightComparison.mostDirect.durationHours}h</span><strong>Save ${risk.flightComparison.extraHours}h for ${risk.flightComparison.priceDifference >= 0 ? "+" : "−"}${risk.flightComparison.mostDirect.currency} ${Math.abs(risk.flightComparison.priceDifference).toFixed(2)}</strong></div>` : ""}
+          <div class="risk-list">${risk.risks.map((item) => `<article class="${item.severity}"><div><em>${item.severity}</em><b>${item.title}</b></div><p>${item.evidence} ${item.impact}</p><span>Mitigation: ${item.mitigation}</span></article>`).join("")}</div>
+          <small>${risk.disclaimer}</small>
+        </details>
       </section>`
     : "";
   const completeBudget = plan.completeBudget;
