@@ -249,7 +249,7 @@ function renderPlan(plan) {
   const mobilityCards = mobility?.modes?.length
     ? `<div class="mobility-results">
         <div class="mobility-heading"><div><span>MOBILITY PROTECTION</span><h4>${mobility.recommendation}</h4></div><strong>≤ ${mobility.maxCommuteMinutes} min</strong></div>
-        <div class="mobility-grid">${mobility.modes.map((mode) => `<article class="mobility-card selectable-option ${mode.id === mobility.recommendedMode ? "recommended" : ""}"><label class="option-choice"><input type="radio" name="selectedMobility" value="${mode.id}" ${mode.id === mobility.recommendedMode ? "checked" : ""}> Selecionar</label>
+        <div class="mobility-grid">${mobility.modes.map((mode) => `<article class="mobility-card selectable-option ${mode.id === mobility.recommendedMode ? "recommended" : ""}"><label class="option-choice"><input type="radio" name="selectedMobility" value="${mode.id}" ${mode.id === mobility.recommendedMode ? "checked" : ""}> Select</label>
           <div><b>${mode.label}</b>${mode.id === mobility.recommendedMode ? "<em>Recommended</em>" : ""}</div>
           <strong>${mode.estimatedMinutes} min</strong>
           <small>EUR ${mode.estimatedTripCostEur.toFixed(2)} trip estimate · ${mode.emissions} emissions · ${mode.withinLimit ? "within limit" : "over limit"}</small>
@@ -262,7 +262,7 @@ function renderPlan(plan) {
         <h4>Top flight options · ${flightSearch.origin} → ${flightSearch.destination}</h4>
         <p>${flightSearch.fallback ? "3 illustrative fallback scenarios compared because Duffel is unavailable." : `${flightSearch.searched} sandbox offers compared. Showing the five lowest prices.`}</p>
         ${flightSearch.offers.map((offer, index) => `<article class="flight-card selectable-option">
-          <label class="option-choice"><input type="radio" name="selectedFlight" value="${offer.id}" ${index === 0 ? "checked" : ""}> Selecionar</label>
+          <label class="option-choice"><input type="radio" name="selectedFlight" value="${offer.id}" ${index === 0 ? "checked" : ""}> Select</label>
           <div><b>${offer.airline}</b><span>${flightSearch.fallback ? "DEMO · NOT BOOKABLE" : offer.stops === 0 ? "Direct" : `${offer.stops} stop${offer.stops > 1 ? "s" : ""}`}</span></div>
           <strong>${offer.currency} ${offer.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
           <small>${new Date(offer.departureAt).toLocaleString()} → ${new Date(offer.arrivalAt).toLocaleString()}</small>
@@ -333,7 +333,7 @@ function tripCard(reservation) {
   const internalReference = reservation.internalReference || reservation.bookingReference;
   const supplierReferences = reservation.supplierReferences || { pnr: null, duffelOrderId: null, ticketNumbers: [] };
   return `<article class="active-trip-card">
-    <div class="trip-status"><span>VIAGEM ATIVA · SANDBOX</span><b>Monitoramento preparado</b></div>
+    <div class="trip-status"><span>ACTIVE TRIP · SANDBOX</span><b>Monitoring ready</b></div>
     <div class="trip-title"><div><h3>${trip.destination || reservation.destination}</h3><p>${trip.eventName || "BIT Travels trip"}</p></div><div class="internal-reference"><span>BIT INTERNAL REFERENCE</span><strong>${internalReference}</strong></div></div>
     <div class="trip-route"><b>${trip.origin || "Origin"}</b><i>→</i><b>${trip.destinationAirport || trip.destination || "Destination"}</b><span>${trip.departureDate || "Date pending"} — ${trip.returnDate || "Date pending"}</span></div>
     <div class="trip-details">
@@ -374,7 +374,16 @@ async function renderMyTrips() {
 }
 
 function protectionVoucherCard(voucher) {
-  return `<article class="center-voucher"><div><span>${voucher.label}</span><strong>${voucher.amount} ${voucher.asset}</strong></div><p>${voucher.notification?.message || voucher.legalBasis}</p><code>${voucher.auditReceipt?.hash || "Hash pending"}</code><small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Issued · Testnet · category-controlled use"}</small></article>`;
+  return `<article class="center-voucher">
+    <div class="center-voucher-heading"><span>${voucher.label}</span><strong>${voucher.amount} <small>${voucher.asset}</small></strong></div>
+    <div class="center-voucher-facts">
+      <span><b>Network</b>Stellar Testnet · Issued</span>
+      <span><b>Flight</b>${voucher.flightReference || "Unavailable"}</span>
+      <span><b>Bookings</b>BIT ${voucher.internalReference || "unavailable"} · PNR ${voucher.bookingReference || "unavailable"}</span>
+    </div>
+    <div class="center-voucher-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm || "SHA-256"}</b><code>${voucher.auditReceipt?.hash || "Hash pending"}</code></div>
+    <small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Category-controlled use"}</small>
+  </article>`;
 }
 
 function renderProtectionState(reservation, protection) {
@@ -391,7 +400,7 @@ function renderProtectionState(reservation, protection) {
   </div>${verificationBanner}
   <div class="protection-actions"><div><span>PASSENGER REPORT · EXTERNAL VERIFICATION</span><h3>Report flight status</h3></div><button data-center-event="on_time">Report on time</button><button data-center-event="delayed_60">Report 1h delay</button><button data-center-event="delayed_120">Report 2h delay</button><button data-center-event="delayed_240" data-overnight="true">Report 4h delay + overnight stay</button></div>
   <div class="testnet-demonstration"><div><span>TRANSPARENT DEMONSTRATION · TESTNET</span><h3>Run the complete protection cycle</h3><p>Simulates a two-hour delay to demonstrate issuance, notification, and audit. It is not an airline or Aviationstack confirmation.</p></div><button data-demo-delay>Demonstrate a 2h delay</button></div>
-  ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Direitos ativados</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></article>`).join("")}</div>` : ""}
+  ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Activated rights</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.type === "communication" ? "Internet or telephone access provided during the wait." : item.detail}</span></article>`).join("")}</div>` : ""}
   ${protection?.recoveryActions?.length ? `<div class="recovery-actions"><div class="recovery-heading"><span>TRIP RECOVERY</span><h3>Linked hotel and mobility services</h3></div>${protection.recoveryActions.map((action) => `<article><div><b>${action.title}</b><span>${action.service?.name || "Linked service"}</span><p>${action.detail}</p><code>${action.auditHash}</code></div><aside><strong>${action.status.replaceAll("_", " ")}</strong>${action.status === "pending_approval" ? `<button data-recovery-action="${action.id}" data-decision="authorized">Authorize in Testnet</button><button class="secondary" data-recovery-action="${action.id}" data-decision="rejected">Reject</button>` : `<small>${action.execution?.note || "Auditable decision recorded."}</small>`}</aside></article>`).join("")}</div>` : ""}
   ${vouchers.length ? `<div class="center-vouchers"><h3>Issued benefits</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>No assistance required</h3><p>The flight is being monitored. Vouchers will appear here when an eligible trigger is recorded.</p></div>`}
   <div class="center-audit"><div><span>AUDIT TRAIL</span><h3>${protection?.ledger?.length || 0} recorded event(s)</h3></div><code>Session ${protection?.sessionId || "unavailable"}</code><small>All times are recorded in ISO format; vouchers include a SHA-256 hash and legal reference.</small></div>`;
@@ -478,7 +487,7 @@ form.addEventListener("submit", async (event) => {
   setPaymentStage("request");
   idle.classList.add("hidden");
   run.classList.remove("hidden");
-  agentCity.textContent = `Cuidando de ${tripInput.destination}`;
+  agentCity.textContent = `Planning ${tripInput.destination}`;
 
   addStep(`Trip request understood · ${tripInput.eventName}`);
   if (connectedWallet) addStep(`Traveler wallet connected · ${shortAddress(connectedWallet.address)}`);

@@ -440,3 +440,63 @@ footer {
   .wallet-voucher-summary .booking-references { grid-template-columns: 1fr; }
   .wallet-voucher-summary .booking-references i { grid-template-columns: 1fr; gap: 3px; }
 }
+
+/* Selection controls, compact vouchers, and readable protocol identifiers */
+.option-choice {
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  min-width: 96px;
+  min-height: 34px;
+  margin: 0;
+  padding: 7px 12px;
+  border: 1px solid rgba(0,51,102,.12);
+  border-radius: 999px;
+  background: #FFF8DF;
+  color: #003366;
+  font-size: 10px !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+.option-choice input[type="radio"] {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: #003366;
+  box-shadow: none;
+}
+.flight-card.selectable-option { min-height: 116px; padding: 22px 142px 18px 0 !important; }
+.flight-card .option-choice { top: 50%; right: 14px; transform: translateY(-50%); }
+.hotel-grid .selectable-option, .mobility-card.selectable-option { padding: 54px 14px 14px !important; }
+.hotel-grid .option-choice, .mobility-card .option-choice { top: 12px; right: 12px; }
+
+.center-vouchers { grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 16px; }
+.center-voucher { padding: 20px; border-radius: 16px; box-shadow: 0 14px 30px rgba(0,51,102,.14); }
+.center-voucher-heading { display: grid !important; grid-template-columns: 1fr auto; align-items: center; gap: 14px; padding-bottom: 13px; border-bottom: 1px solid rgba(255,255,255,.16); }
+.center-voucher-heading span { font: 700 15px/1.2 "Poppins",sans-serif; }
+.center-voucher-heading strong { color: #FFFFFF; font: 800 18px/1 "Poppins",sans-serif; white-space: nowrap; }
+.center-voucher-heading strong small { color: #FDB913; font-size: 9px; }
+.center-voucher-facts { display: grid !important; gap: 7px; margin: 13px 0; }
+.center-voucher-facts span { display: grid; grid-template-columns: 75px 1fr; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.09); color: #FFFFFF; font-size: 10px; }
+.center-voucher-facts b { color: #FDB913; font-size: 8px; letter-spacing: .5px; text-transform: uppercase; }
+.center-voucher-proof { display: grid !important; gap: 6px; padding: 11px; border-radius: 9px; background: #FFFFFF; color: #003366; }
+.center-voucher-proof b { font-size: 9px; }
+.center-voucher-proof code { display: block; overflow: hidden; padding: 0; background: transparent; color: #003366; font-size: 10px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.center-voucher > small { margin-top: 10px; color: rgba(255,255,255,.78); font-size: 10px; }
+
+.audit-proof code, .trip-audit code, .wallet-proof code, .center-audit code,
+.payment-proof code, .recovery-actions code, .reservation-success code {
+  font-size: 10px;
+  line-height: 1.45;
+}
+.wallet-proof b, .audit-proof b { font-size: 9px; }
+
+@media(max-width:680px) {
+  .flight-card.selectable-option { padding: 62px 14px 18px !important; }
+  .flight-card .option-choice { top: 14px; right: 14px; transform: none; }
+  .center-vouchers { grid-template-columns: 1fr; }
+}

@@ -148,7 +148,7 @@ function proposeRecoveryActions(session) {
 }
 
 function applyAnacRules(session) {
-  if (session.delayMinutes >= 60) addEntitlement(session, "communication", "Internet ou telefone disponibilizado durante a espera.");
+  if (session.delayMinutes >= 60) addEntitlement(session, "communication", "Internet or telephone access provided during the wait.");
   if (session.delayMinutes >= 120) issueVoucher(session, "meal");
   if (session.delayMinutes >= 240) {
     addEntitlement(session, "passenger_choice", "Offer reaccommodation, a full refund, or completion by another mode of transport.");
