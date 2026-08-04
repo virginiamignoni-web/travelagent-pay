@@ -13,10 +13,10 @@
   <body>
     <header>
       <a class="brand" href="#"><img src="/bit-travels-logo.png" alt="BIT Travels" /><span><b>BIT TRAVELS</b><small>CONCIERGE</small></span></a>
-      <nav class="product-nav" aria-label="Jornada do cliente">
-        <a id="planner-nav" class="active" href="#planner">Planejar viagem</a>
-        <a id="trips-nav" href="#my-trips">Minhas viagens</a>
-        <a id="protection-nav" href="#protection-center">Proteção</a>
+      <nav class="product-nav" aria-label="Customer journey">
+        <a id="planner-nav" class="active" href="#planner">Plan a trip</a>
+        <a id="trips-nav" href="#my-trips">My trips</a>
+        <a id="protection-nav" href="#protection-center">Protection</a>
         <a id="wallet-nav" href="#voucher-wallet">Wallet</a>
       </nav>
       <div class="header-actions">
@@ -27,24 +27,24 @@
 
     <main>
       <section class="hero">
-        <div class="eyebrow">ETAPA 1 · PLANEJAMENTO</div>
-        <h1>Planeje antes de reservar.<br /><em>Decida com clareza.</em></h1>
-        <p>Compare voos, hospedagem, mobilidade, orçamento e riscos. Nesta etapa, o concierge recomenda — nenhuma reserva, alteração ou emissão é realizada.</p>
+        <div class="eyebrow">STEP 1 · PLANNING</div>
+        <h1>Plan before you book.<br /><em>Decide with clarity.</em></h1>
+        <p>Compare flights, accommodation, mobility, budget, and risk. The concierge recommends options—no booking, change, or issuance is performed at this stage.</p>
         <div class="promise-row">
-          <span>Pesquisa real em sandbox</span><span>Comparação transparente</span><span>Nenhuma compra automática</span>
+          <span>Real sandbox search</span><span>Transparent comparison</span><span>No automatic purchase</span>
         </div>
       </section>
 
-      <section class="journey-progress" aria-label="Etapas da jornada">
-        <div class="active"><b>1</b><span>Planejar<small>Pesquisa e comparação</small></span></div>
-        <div id="progress-confirm"><b>2</b><span>Confirmar<small>Escolhas e reserva</small></span></div>
-        <div><b>3</b><span>Viajar<small>Monitoramento ativo</small></span></div>
-        <div><b>4</b><span>Proteger<small>Assistência e vouchers</small></span></div>
+      <section class="journey-progress" aria-label="Journey stages">
+        <div class="active"><b>1</b><span>Plan<small>Search and compare</small></span></div>
+        <div id="progress-confirm"><b>2</b><span>Confirm<small>Choices and booking</small></span></div>
+        <div><b>3</b><span>Travel<small>Active monitoring</small></span></div>
+        <div><b>4</b><span>Protect<small>Assistance and vouchers</small></span></div>
       </section>
 
       <section id="planner" class="workspace">
         <form id="trip-form" class="planner-card">
-          <div class="card-label">01 — SUA VIAGEM</div>
+          <div class="card-label">01 — YOUR TRIP</div>
           <label>Departure city<input name="originCity" value="São Paulo" required /></label>
           <div class="split">
             <label>Origin airport<input name="origin" value="GRU" minlength="3" maxlength="3" required /></label>
@@ -72,27 +72,27 @@
           <label>Preferred transport<select name="transportPreference"><option value="public_transport" selected>Public transport</option><option value="walking">Walking</option><option value="ride_hailing">Taxi or ride app</option><option value="rental_car">Rental car</option><option value="compare_all">Compare all</option></select></label>
           <label>Travel style<select name="travelStyle"><option>Balanced</option><option>Budget-conscious</option><option>Comfort</option></select></label>
           <label>Hotel preferences<textarea name="hotelPreferences" rows="3" placeholder="Breakfast, cancellation, accessibility, parking…">Breakfast included and flexible cancellation</textarea></label>
-          <button type="submit">Planejar com o concierge <span>→</span></button>
+          <button type="submit">Plan with the concierge <span>→</span></button>
           <p class="fine-print">Demo price: 0.01 test USDC per premium itinerary.</p>
         </form>
 
         <section class="agent-card">
-          <div class="card-label">02 — RESULTADO DO PLANEJAMENTO</div>
+          <div class="card-label">02 — PLANNING RESULT</div>
           <div id="idle" class="idle-state">
             <div class="orb"><div></div></div>
-            <h2>Pronto para comparar sua viagem</h2>
-            <p>O concierge organiza as alternativas e mostra os impactos antes de você confirmar qualquer reserva.</p>
+            <h2>Ready to compare your trip</h2>
+            <p>The concierge organizes alternatives and shows their impact before you confirm a booking.</p>
           </div>
           <div id="run" class="run-state hidden">
-            <div class="agent-heading"><div class="mini-orb"></div><div><b>BIT Concierge ativo</b><span id="agent-city">Planejando</span></div></div>
+            <div class="agent-heading"><div class="mini-orb"></div><div><b>BIT Concierge active</b><span id="agent-city">Planning</span></div></div>
             <ol id="steps" class="steps"></ol>
             <section id="payment-panel" class="payment-panel" aria-live="polite">
-              <div class="payment-panel-heading"><div><span>AGENTIC PAYMENT · MPP</span><h3>Ciclo HTTP 402</h3></div><b id="payment-mode-badge">STELLAR TESTNET</b></div>
+              <div class="payment-panel-heading"><div><span>AGENTIC PAYMENT · MPP</span><h3>HTTP 402 cycle</h3></div><b id="payment-mode-badge">STELLAR TESTNET</b></div>
               <div class="payment-flow">
-                <article id="payment-step-request"><i>1</i><div><b>Solicitar serviço</b><small>Inteligência premium</small></div></article>
-                <article id="payment-step-402"><i>2</i><div><b>HTTP 402</b><small>0,01 USDC solicitado</small></div></article>
-                <article id="payment-step-settlement"><i>3</i><div><b>MPP settlement</b><small>Pagamento programável</small></div></article>
-                <article id="payment-step-unlock"><i>4</i><div><b>Desbloquear</b><small>Resposta HTTP 200</small></div></article>
+                <article id="payment-step-request"><i>1</i><div><b>Request service</b><small>Premium intelligence</small></div></article>
+                <article id="payment-step-402"><i>2</i><div><b>HTTP 402</b><small>0.01 USDC requested</small></div></article>
+                <article id="payment-step-settlement"><i>3</i><div><b>MPP settlement</b><small>Programmable payment</small></div></article>
+                <article id="payment-step-unlock"><i>4</i><div><b>Unlock</b><small>HTTP 200 response</small></div></article>
               </div>
               <div id="payment-proof" class="payment-proof hidden"></div>
             </section>
@@ -103,27 +103,27 @@
       </section>
 
       <section id="reservation-stage" class="reservation-stage hidden" aria-live="polite">
-        <div class="reservation-intro"><span>ETAPA 2 · REVISAR E RESERVAR</span><h2>Confirme suas escolhas</h2><p>Revise o conjunto recomendado antes de criar a viagem ativa.</p></div>
+        <div class="reservation-intro"><span>STEP 2 · REVIEW AND BOOK</span><h2>Confirm your choices</h2><p>Review the recommended combination before creating the active trip.</p></div>
         <div id="reservation-review"></div>
       </section>
 
       <section id="my-trips" class="my-trips hidden" aria-live="polite">
-        <div class="trips-heading"><div><span>ETAPA 3 · MINHAS VIAGENS</span><h2>Sua jornada em um só lugar</h2><p>Reservas confirmadas, próximos passos e proteção preparada.</p></div><button id="back-to-planner" type="button">+ Planejar nova viagem</button></div>
+        <div class="trips-heading"><div><span>STEP 3 · MY TRIPS</span><h2>Your journey in one place</h2><p>Confirmed bookings, next steps, and prepared protection.</p></div><button id="back-to-planner" type="button">+ Plan a new trip</button></div>
         <div id="trips-content"></div>
       </section>
 
       <section id="protection-center" class="protection-center hidden" aria-live="polite">
-        <div class="protection-center-heading"><div><span>BIT JOURNEY PROTECTION</span><h2>Central de Proteção</h2><p>Monitoramento, assistência ao passageiro e auditoria em uma única operação.</p></div><button id="back-to-trips" type="button">← Minhas viagens</button></div>
+        <div class="protection-center-heading"><div><span>BIT JOURNEY PROTECTION</span><h2>Protection Center</h2><p>Monitoring, passenger assistance, and audit in one operation.</p></div><button id="back-to-trips" type="button">← My trips</button></div>
         <div id="protection-content"></div>
       </section>
 
       <section id="voucher-wallet" class="voucher-wallet hidden" aria-live="polite">
-        <div class="wallet-heading"><div><span>STELLAR TESTNET · USDC</span><h2>Carteira de Vouchers</h2><p>Benefícios programáveis e comprovantes auditáveis da jornada.</p></div><button id="wallet-back-to-trips" type="button">← Minhas viagens</button></div>
+        <div class="wallet-heading"><div><span>STELLAR TESTNET · USDC</span><h2>Voucher Wallet</h2><p>Programmable benefits and auditable journey records.</p></div><button id="wallet-back-to-trips" type="button">← My trips</button></div>
         <div id="wallet-content"></div>
       </section>
     </main>
 
-    <footer><span>BIT Travels · turismo com uma camada de proteção</span><span>Stellar · USDC · Testnet</span></footer>
+    <footer><span>BIT Travels · tourism with a protection layer</span><span>Stellar · USDC · Testnet</span></footer>
     <script src="/vendor/freighter-api.js"></script>
     <script type="module" src="/app.js"></script>
   </body>

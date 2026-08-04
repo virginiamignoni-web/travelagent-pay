@@ -6,9 +6,9 @@ const vouchers = new Map();
 const VALID_EVENTS = ["on_time", "delayed_60", "delayed_120", "delayed_240"];
 
 const BENEFIT_RULES = {
-  meal: { label: "Voucher Alimentação", amount: "15.00", validFor: ["restaurant", "cafe", "airport_food"], legalBasis: "Art. 27, inciso II, da Resolução ANAC nº 400/2016" },
-  transport: { label: "Voucher Transporte", amount: "25.00", validFor: ["airport_transport", "taxi", "ride_hailing"], legalBasis: "Art. 27, inciso III, da Resolução ANAC nº 400/2016" },
-  hotel: { label: "Voucher Hospedagem", amount: "80.00", validFor: ["hotel", "airport_hotel"], legalBasis: "Art. 27, inciso III, da Resolução ANAC nº 400/2016" },
+  meal: { label: "Meal Voucher", amount: "15.00", validFor: ["restaurant", "cafe", "airport_food"], legalBasis: "Article 27(II) of ANAC Resolution No. 400/2016" },
+  transport: { label: "Ground Transport Voucher", amount: "25.00", validFor: ["airport_transport", "taxi", "ride_hailing"], legalBasis: "Article 27(III) of ANAC Resolution No. 400/2016" },
+  hotel: { label: "Accommodation Voucher", amount: "80.00", validFor: ["hotel", "airport_hotel"], legalBasis: "Article 27(III) of ANAC Resolution No. 400/2016" },
 };
 
 function clone(value) { return structuredClone(value); }
@@ -29,8 +29,24 @@ function sessionVouchers(session) {
   }).filter(Boolean);
 }
 
+function presentVoucher(voucher) {
+  const rule = BENEFIT_RULES[voucher.type];
+  if (!rule) return clone(voucher);
+  const presented = clone(voucher);
+  presented.label = rule.label;
+  presented.legalBasis = rule.legalBasis;
+  if (presented.notification) {
+    const bitReference = presented.internalReference && !/não informada/i.test(presented.internalReference) ? `BIT booking ${presented.internalReference}` : "the monitored trip";
+    const pnr = presented.bookingReference && !/não informada/i.test(presented.bookingReference) ? ` and PNR ${presented.bookingReference}` : "";
+    presented.notification.title = `${rule.label} issued`;
+    presented.notification.message = `${rule.label} for ${presented.amount} USDC Testnet issued under ${rule.legalBasis}, for flight ${presented.flightReference} and ${bitReference}${pnr}.`;
+  }
+  if (presented.settlement && !presented.settlement.transactionHash) presented.settlement.note = "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.";
+  return presented;
+}
+
 function publicSession(session) {
-  const issued = sessionVouchers(session);
+  const issued = sessionVouchers(session).map(presentVoucher);
   return clone({ ...session, vouchers: issued, voucher: issued.find((item) => item.type === "meal") || issued[0] || null });
 }
 
@@ -40,11 +56,11 @@ function issueVoucher(session, type) {
   const rule = BENEFIT_RULES[type];
   const issuedAt = now();
   const id = randomUUID();
-  const flightReference = session.flight.number || session.flight.airline || "voo não identificado";
-  const bookingReference = session.bookingReference || "reserva não informada";
-  const internalReference = session.internalReference || "referência BIT não informada";
+  const flightReference = session.flight.number || session.flight.airline || "unidentified flight";
+  const bookingReference = session.bookingReference || "booking unavailable";
+  const internalReference = session.internalReference || "BIT reference unavailable";
   const issuer = session.issuer || { name: "BIT Travels Journey Protection Engine", type: "platform_testnet_demo", airline: session.flight.airline || null, authenticatedExternalInstruction: false };
-  const reservationMessage = session.internalReference ? `à reserva BIT ${session.internalReference}${session.bookingReference ? ` e ao PNR ${session.bookingReference}` : ""}` : session.bookingReference ? `ao PNR ${session.bookingReference}` : "à viagem monitorada";
+  const reservationMessage = session.internalReference ? `BIT booking ${session.internalReference}${session.bookingReference ? ` and PNR ${session.bookingReference}` : ""}` : session.bookingReference ? `PNR ${session.bookingReference}` : "the monitored trip";
   const auditRecord = {
     event: "benefit_issued",
     voucherId: id,
@@ -90,15 +106,15 @@ function issueVoucher(session, type) {
       channel: "in_app",
       status: "delivered",
       deliveredAt: issuedAt,
-      title: `${rule.label} emitido`,
-      message: `${rule.label} de ${rule.amount} USDC Testnet emitido conforme ${rule.legalBasis}, referente ao voo ${flightReference} e ${reservationMessage}.`,
+      title: `${rule.label} issued`,
+      message: `${rule.label} for ${rule.amount} USDC Testnet issued under ${rule.legalBasis}, for flight ${flightReference} and ${reservationMessage}.`,
     },
     settlement: {
       mode: "testnet_voucher_demo",
       onChain: false,
       transactionHash: null,
       fundingSource: "none_demo_credit",
-      note: "Crédito demonstrativo: nenhum USDC foi transferido. O audit hash comprova integridade do registro, não liquidação na Stellar.",
+      note: "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.",
     },
     audit: [{ at: issuedAt, event: "voucher_issued", actor: "BIT Travels Journey Protection Engine" }],
   };
@@ -127,22 +143,22 @@ function proposeRecoveryActions(session) {
     session.recoveryActions.push(action);
     session.ledger.push({ at: proposedAt, event: "recovery_action_proposed", actionId: action.id, type, auditHash: action.auditHash });
   };
-  add(session.linkedServices?.hotel, "protect_hotel_checkin", "Proteger check-in do hotel", `Notificar chegada aproximadamente ${session.delayMinutes} minutos mais tarde e solicitar manutenção da reserva.`);
-  add(session.linkedServices?.mobility, "reschedule_transfer", "Reprogramar traslado", `Deslocar a retirada em aproximadamente ${session.delayMinutes} minutos conforme a nova chegada estimada.`);
+  add(session.linkedServices?.hotel, "protect_hotel_checkin", "Protect hotel check-in", `Notify the hotel of an arrival approximately ${session.delayMinutes} minutes later and request that the booking be held.`);
+  add(session.linkedServices?.mobility, "reschedule_transfer", "Reschedule ground transfer", `Move pickup by approximately ${session.delayMinutes} minutes based on the new estimated arrival.`);
 }
 
 function applyAnacRules(session) {
   if (session.delayMinutes >= 60) addEntitlement(session, "communication", "Internet ou telefone disponibilizado durante a espera.");
   if (session.delayMinutes >= 120) issueVoucher(session, "meal");
   if (session.delayMinutes >= 240) {
-    addEntitlement(session, "passenger_choice", "Oferecer reacomodação, reembolso integral ou execução por outra modalidade de transporte.");
+    addEntitlement(session, "passenger_choice", "Offer reaccommodation, a full refund, or completion by another mode of transport.");
     issueVoucher(session, "transport");
     if (session.context.specialAssistance || (session.context.overnightRequired && !session.context.atHomeCity)) {
       issueVoucher(session, "hotel");
     } else if (session.context.atHomeCity) {
-      addEntitlement(session, "home_transport", "Transporte aeroporto–residência–aeroporto; hospedagem não emitida automaticamente.");
+      addEntitlement(session, "home_transport", "Airport–home–airport transport; accommodation is not issued automatically.");
     } else {
-      addEntitlement(session, "accommodation_review", "Sem pernoite informado: acomodação e necessidade de hotel devem ser confirmadas.");
+      addEntitlement(session, "accommodation_review", "No overnight stay reported: accommodation requirements must be confirmed.");
     }
   }
   const issued = sessionVouchers(session);
@@ -159,16 +175,16 @@ export function createProtectionSession({ input = {}, primaryFlight } = {}) {
     travelerWallet: input.travelerWallet || null,
     context: { overnightRequired: false, atHomeCity: false, specialAssistance: false },
     policy: {
-      jurisdiction: "ANAC Resolução 400/2016",
+      jurisdiction: "ANAC Resolution 400/2016",
       communicationThresholdMinutes: 60,
       mealThresholdMinutes: 120,
       accommodationThresholdMinutes: 240,
       network: "stellar:testnet",
-      rule: "Hotel somente quando houver pernoite, salvo necessidades de assistência especial; no domicílio, pode ser oferecido apenas traslado.",
+      rule: "Hotel assistance applies when an overnight stay is required, except for special-assistance needs; in the passenger's home city, ground transport may be offered instead.",
     },
     linkedServices: input.linkedServices || {}, recoveryActions: [], entitlementOptions: [], entitlements: [], voucherIds: [],
     ledger: [{ at: createdAt, event: "monitoring_started", flight: primaryFlight?.airline || "pending" }],
-    disclaimer: "Demonstração em Testnet. Valores são ilustrativos; elegibilidade, valores e liquidação dependem de acordo com a companhia aérea e validação operacional.",
+    disclaimer: "Testnet demonstration. Amounts are illustrative; eligibility, value, and settlement depend on airline agreements and operational validation.",
   };
   protectionSessions.set(session.sessionId, session);
   persistProtectionSession(session);
@@ -207,7 +223,7 @@ export function decideRecoveryAction({ sessionId, actionId, decision, actor = "t
   action.status = decision === "authorized" ? "authorized_testnet" : "rejected";
   action.decidedAt = at;
   action.decidedBy = actor;
-  action.execution = decision === "authorized" ? { status: "queued_sandbox", supplierChanged: false, note: "Autorização registrada. A execução externa depende da API do fornecedor." } : null;
+  action.execution = decision === "authorized" ? { status: "queued_sandbox", supplierChanged: false, note: "Authorization recorded. External execution depends on the supplier API." } : null;
   action.decisionAuditHash = auditHash({ sessionId, actionId, decision, actor, at });
   session.updatedAt = at;
   session.ledger.push({ at, event: `recovery_action_${action.status}`, actionId, actor, auditHash: action.decisionAuditHash });

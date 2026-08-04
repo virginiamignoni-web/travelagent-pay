@@ -329,10 +329,10 @@ test("links every voucher to an auditable receipt and passenger notification", (
   assert.equal(voucher.settlement.fundingSource, "none_demo_credit");
   assert.equal(voucher.issuer.name, "BIT Travels Journey Protection Engine");
   assert.equal(voucher.issuer.authenticatedExternalInstruction, false);
-  assert.match(voucher.notification.message, /Art\. 27, inciso II/);
-  assert.match(voucher.notification.message, /voo TP88/);
+  assert.match(voucher.notification.message, /Article 27\(II\)/);
+  assert.match(voucher.notification.message, /flight TP88/);
   assert.equal(voucher.internalReference, "BIT987654");
-  assert.match(voucher.notification.message, /reserva BIT BIT987654/);
+  assert.match(voucher.notification.message, /BIT booking BIT987654/);
   assert.match(voucher.notification.message, /PNR ABC123/);
   assert.equal(voucher.notification.status, "delivered");
 });

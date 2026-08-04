@@ -44,7 +44,7 @@ export async function verifyFlightStatus({ flight = {}, reportedDelayMinutes = 0
       response = await fetchImpl(`${API_URL}?${params}`, { signal: AbortSignal.timeout(10000) });
       payload = await response.json();
     }
-    if (!response.ok || payload.error) return { verified: false, status: "provider_error", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: "A fonte externa não conseguiu consultar este voo agora" };
+    if (!response.ok || payload.error) return { verified: false, status: "provider_error", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: "The external source could not query this flight at this time" };
     const exact = (payload.data || []).find((item) => String(item.flight?.iata || "").replace(/\s/g, "").toUpperCase() === flightNumber.toUpperCase()) || payload.data?.[0];
     return { ...summarizeFlightVerification(exact, reportedDelayMinutes), checkedAt };
   } catch (error) {

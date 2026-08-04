@@ -35,7 +35,7 @@ async function showPaymentProof({ rehearsal = false } = {}) {
   const response = await fetch("/api/payment-proof");
   if (!response.ok) return;
   const proof = await response.json();
-  paymentProof.innerHTML = `<div class="proof-status"><i></i><span><b>${rehearsal ? "Ensaio atual concluído" : "Liquidação verificada"}</b><small>${rehearsal ? "O ciclo visual atual é local; esta é a prova on-chain do ciclo MPP já executado." : "MPP Charge liquidado na Stellar Testnet"}</small></span></div><div class="proof-grid"><span><small>VALOR</small><b>${proof.amount} ${proof.asset}</b></span><span><small>LEDGER</small><b>${proof.ledger}</b></span><span><small>HTTP FINAL</small><b>${proof.finalStatus} OK</b></span><span><small>DATA UTC</small><b>${new Date(proof.timestamp).toISOString()}</b></span></div><div class="proof-addresses"><span><small>AGENTE</small><code>${proof.buyer}</code></span><span><small>PROVEDOR</small><code>${proof.recipient}</code></span></div><a href="${proof.explorerUrl}" target="_blank" rel="noopener noreferrer"><span>HASH VERIFICÁVEL</span><code>${proof.transactionHash}</code><b>Abrir no Stellar Expert ↗</b></a>`;
+  paymentProof.innerHTML = `<div class="proof-status"><i></i><span><b>${rehearsal ? "Current rehearsal completed" : "Settlement verified"}</b><small>${rehearsal ? "The current visual cycle is local; this is the on-chain proof of the previously executed MPP cycle." : "MPP Charge settled on Stellar Testnet"}</small></span></div><div class="proof-grid"><span><small>AMOUNT</small><b>${proof.amount} ${proof.asset}</b></span><span><small>LEDGER</small><b>${proof.ledger}</b></span><span><small>FINAL HTTP</small><b>${proof.finalStatus} OK</b></span><span><small>UTC DATE</small><b>${new Date(proof.timestamp).toISOString()}</b></span></div><div class="proof-addresses"><span><small>AGENT</small><code>${proof.buyer}</code></span><span><small>PROVIDER</small><code>${proof.recipient}</code></span></div><a href="${proof.explorerUrl}" target="_blank" rel="noopener noreferrer"><span>VERIFIABLE HASH</span><code>${proof.transactionHash}</code><b>Open in Stellar Expert ↗</b></a>`;
   paymentProof.classList.remove("hidden");
 }
 
@@ -77,7 +77,7 @@ fetch("/api/health")
   .then((response) => response.json())
   .then((health) => {
     runtimeMode = health.paymentMode;
-    paymentModeBadge.textContent = runtimeMode === "stellar" ? "MPP LIVE · TESTNET" : "ENSAIO LOCAL";
+    paymentModeBadge.textContent = runtimeMode === "stellar" ? "MPP LIVE · TESTNET" : "LOCAL REHEARSAL";
     paymentPanel.classList.toggle("rehearsal", runtimeMode !== "stellar");
     networkLabel.textContent = runtimeMode === "stellar" ? "Stellar Testnet · MPP live" : "Local rehearsal mode";
   })
@@ -117,19 +117,19 @@ function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 function readableDuration(value) {
   const match = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(value || "");
-  if (!match) return "Duração não informada";
+  if (!match) return "Duration unavailable";
   return [match[1] ? `${Number(match[1])}h` : "", match[2] ? `${Number(match[2])}min` : ""].filter(Boolean).join(" ");
 }
 
 function airportLabel(airport = {}, terminal = null) {
   const code = airport.iataCode || "—";
-  const name = airport.name || airport.cityName || "Aeroporto não informado";
+  const name = airport.name || airport.cityName || "Airport unavailable";
   return `${code} · ${name}${terminal ? ` · Terminal ${terminal}` : ""}`;
 }
 
 function flightDetails(offer) {
   if (!offer.slices?.length) return "";
-  return `<details class="flight-details"><summary>Ver detalhes do voo</summary>${offer.slices.map((slice) => `<section><header><div><span>${slice.direction === "outbound" ? "IDA" : slice.direction === "return" ? "VOLTA" : "TRECHO"}</span><b>${slice.origin?.iataCode || "—"} → ${slice.destination?.iataCode || "—"}</b></div><strong>${readableDuration(slice.duration)}</strong></header>${slice.segments.map((segment, index) => `<article><div class="segment-line"><i>${index + 1}</i><span><b>${airportLabel(segment.origin, segment.originTerminal)}</b><small>${new Date(segment.departingAt).toLocaleString()}</small></span><em>→</em><span><b>${airportLabel(segment.destination, segment.destinationTerminal)}</b><small>${new Date(segment.arrivingAt).toLocaleString()}</small></span></div><div class="segment-meta"><span><small>VOO</small><b>${segment.flightNumber || "Não informado"}</b></span><span><small>DURAÇÃO</small><b>${readableDuration(segment.duration)}</b></span><span><small>OPERADO POR</small><b>${segment.operatingCarrier || segment.marketingCarrier || offer.airline}</b></span>${segment.aircraft ? `<span><small>AERONAVE</small><b>${segment.aircraft}</b></span>` : ""}</div></article>${index < slice.segments.length - 1 ? `<div class="connection-time">Conexão antes do próximo trecho</div>` : ""}`).join("")}</section>`).join("")}</details>`;
+  return `<details class="flight-details"><summary>View flight details</summary>${offer.slices.map((slice) => `<section><header><div><span>${slice.direction === "outbound" ? "OUTBOUND" : slice.direction === "return" ? "RETURN" : "LEG"}</span><b>${slice.origin?.iataCode || "—"} → ${slice.destination?.iataCode || "—"}</b></div><strong>${readableDuration(slice.duration)}</strong></header>${slice.segments.map((segment, index) => `<article><div class="segment-line"><i>${index + 1}</i><span><b>${airportLabel(segment.origin, segment.originTerminal)}</b><small>${new Date(segment.departingAt).toLocaleString()}</small></span><em>→</em><span><b>${airportLabel(segment.destination, segment.destinationTerminal)}</b><small>${new Date(segment.arrivingAt).toLocaleString()}</small></span></div><div class="segment-meta"><span><small>FLIGHT</small><b>${segment.flightNumber || "Unavailable"}</b></span><span><small>DURATION</small><b>${readableDuration(segment.duration)}</b></span><span><small>OPERATED BY</small><b>${segment.operatingCarrier || segment.marketingCarrier || offer.airline}</b></span>${segment.aircraft ? `<span><small>AIRCRAFT</small><b>${segment.aircraft}</b></span>` : ""}</div></article>${index < slice.segments.length - 1 ? `<div class="connection-time">Connection before the next leg</div>` : ""}`).join("")}</section>`).join("")}</details>`;
 }
 
 function renderPlan(plan) {
@@ -139,36 +139,36 @@ function renderPlan(plan) {
   const voucher = protection?.voucher;
   const protectionVouchers = protection?.vouchers || (voucher ? [voucher] : []);
   const voucherCard = (item) => `<article class="voucher-card ${item.status}">
-          <div class="voucher-brand"><b>BIT TRAVELS</b><span>ASSISTÊNCIA PROGRAMÁVEL</span></div>
+          <div class="voucher-brand"><b>BIT TRAVELS</b><span>PROGRAMMABLE ASSISTANCE</span></div>
           <div class="voucher-value"><strong>${item.amount}</strong><span>${item.asset} · TESTNET</span></div>
-          <h4>${item.label}</h4><p>Válido por 24 horas · categoria de uso controlada.</p>
-          <div class="voucher-code" aria-label="Código de resgate"><i></i><i></i><i></i><i></i><b>${item.code}</b></div>
-          <div class="voucher-notification"><b>Notificação entregue</b><span>${item.notification.message}</span><small>${new Date(item.notification.deliveredAt).toLocaleString()}</small></div>
-          <div class="audit-proof"><span><b>Audit hash · ${item.auditReceipt.algorithm}</b><code>${item.auditReceipt.hash}</code></span><span><b>Carimbo de data e hora</b><code>${new Date(item.auditReceipt.timestamp).toISOString()}</code></span><span><b>Stellar transaction hash</b><code>${item.settlement.transactionHash || "Pendente de liquidação on-chain"}</code></span></div>
-          ${item.status === "issued" ? `<button type="button" data-redeem-voucher="${item.id}" data-voucher-code="${item.code}" data-voucher-type="${item.type}">Simular resgate credenciado</button>` : `<div class="redeemed-stamp">✓ Resgatado por ${item.redeemedBy} · uso duplicado bloqueado</div>`}
+          <h4>${item.label}</h4><p>Valid for 24 hours · controlled merchant categories.</p>
+          <div class="voucher-code" aria-label="Redemption code"><i></i><i></i><i></i><i></i><b>${item.code}</b></div>
+          <div class="voucher-notification"><b>Notification delivered</b><span>${item.notification.message}</span><small>${new Date(item.notification.deliveredAt).toLocaleString()}</small></div>
+          <div class="audit-proof"><span><b>Audit hash · ${item.auditReceipt.algorithm}</b><code>${item.auditReceipt.hash}</code></span><span><b>Timestamp</b><code>${new Date(item.auditReceipt.timestamp).toISOString()}</code></span><span><b>Stellar transaction hash</b><code>${item.settlement.transactionHash || "Pending on-chain settlement"}</code></span></div>
+          ${item.status === "issued" ? `<button type="button" data-redeem-voucher="${item.id}" data-voucher-code="${item.code}" data-voucher-type="${item.type}">Simulate authorized redemption</button>` : `<div class="redeemed-stamp">✓ Redeemed by ${item.redeemedBy} · duplicate use blocked</div>`}
           <small>${item.settlement.note}</small>
         </article>`;
   const protectionCard = protection
     ? `<section class="journey-protection ${protection.status}">
-        <div class="journey-heading"><div><span>ANAC · JOURNEY PROTECTION ENGINE</span><h3>${protection.status === "redeemed" ? "Assistência utilizada" : protectionVouchers.length ? "Assistência emitida em segundos" : protection.entitlements.length ? "Assistência material ativada" : "Voo monitorado proativamente"}</h3><p>${protection.flight.airline} · ${protection.flight.origin || "origem"} → ${protection.flight.destination || "destino"}</p></div><strong>${protection.delayMinutes}<small>min de atraso</small></strong></div>
-        <div class="event-track"><i class="active">pontual</i><i class="${protection.delayMinutes >= 60 ? "active" : ""}">1h comunicação</i><i class="${protection.delayMinutes >= 120 ? "active" : ""}">2h alimentação</i><i class="${protection.delayMinutes >= 240 ? "active" : ""}">4h assistência</i><i class="${protection.status === "redeemed" ? "active" : ""}">resgate</i></div>
-        ${protection.delayMinutes < 240 ? `<div class="simulation-actions"><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_60">Simular 1 hora</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_120">Simular 2 horas</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_240" data-overnight="true">Simular 4h + pernoite</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_240" data-home-city="true">Simular 4h no domicílio</button></div>` : ""}
+        <div class="journey-heading"><div><span>ANAC · JOURNEY PROTECTION ENGINE</span><h3>${protection.status === "redeemed" ? "Assistance redeemed" : protectionVouchers.length ? "Assistance issued in seconds" : protection.entitlements.length ? "Material assistance activated" : "Flight proactively monitored"}</h3><p>${protection.flight.airline} · ${protection.flight.origin || "origin"} → ${protection.flight.destination || "destination"}</p></div><strong>${protection.delayMinutes}<small>min delayed</small></strong></div>
+        <div class="event-track"><i class="active">on time</i><i class="${protection.delayMinutes >= 60 ? "active" : ""}">1h communication</i><i class="${protection.delayMinutes >= 120 ? "active" : ""}">2h meals</i><i class="${protection.delayMinutes >= 240 ? "active" : ""}">4h assistance</i><i class="${protection.status === "redeemed" ? "active" : ""}">redemption</i></div>
+        ${protection.delayMinutes < 240 ? `<div class="simulation-actions"><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_60">Simulate 1 hour</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_120">Simulate 2 hours</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_240" data-overnight="true">Simulate 4h + overnight stay</button><button type="button" data-protection-session="${protection.sessionId}" data-event="delayed_240" data-home-city="true">Simulate 4h in home city</button></div>` : ""}
         ${protection.entitlements.length ? `<div class="entitlement-list">${protection.entitlements.map((item) => `<div><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></div>`).join("")}</div>` : ""}
-        ${protection.entitlementOptions.length ? `<div class="passenger-choice"><b>Escolha obrigatória do passageiro</b><span>${protection.entitlementOptions.map((item) => item.replaceAll("_", " ")).join(" · ")}</span></div>` : ""}
+        ${protection.entitlementOptions.length ? `<div class="passenger-choice"><b>Passenger choice required</b><span>${protection.entitlementOptions.map((item) => item.replaceAll("_", " ")).join(" · ")}</span></div>` : ""}
         ${protectionVouchers.length ? `<div class="voucher-grid">${protectionVouchers.map(voucherCard).join("")}</div>` : ""}
-        <div class="journey-ledger"><b>Protection ledger</b><span>${protection.ledger.length} eventos registrados</span></div>
+        <div class="journey-ledger"><b>Protection ledger</b><span>${protection.ledger.length} recorded events</span></div>
         <small>${protection.policy.rule} ${protection.disclaimer}</small>
       </section>`
     : "";
   const approval = plan.approvalQueue;
   const approvalCard = approval
     ? `<section class="approval-card">
-        <div class="approval-heading"><div><span>CONTROLLED AUTONOMY</span><h3>Fila de decisões do cliente</h3><p>${approval.policy.mode} · limite de R$ ${approval.policy.maxAutoActionBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })} por ação</p></div><strong>${approval.actions.filter((item) => item.status === "pending_approval").length}<small>pendentes</small></strong></div>
+        <div class="approval-heading"><div><span>CONTROLLED AUTONOMY</span><h3>Traveler decision queue</h3><p>${approval.policy.mode} · R$ ${approval.policy.maxAutoActionBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })} limit per action</p></div><strong>${approval.actions.filter((item) => item.status === "pending_approval").length}<small>pending</small></strong></div>
         <div class="approval-list">${approval.actions.map((item) => `<article class="${item.status}">
           <div class="approval-status"><em>${item.category}</em><b>${item.status.replaceAll("_", " ")}</b></div>
           <h4>${item.title}</h4><p><b>Gatilho:</b> ${item.trigger}</p><span>${item.target}</span>
-          <div class="approval-meta"><span>${item.estimatedDeltaBrl === null ? "Custo pendente" : `${item.estimatedDeltaBrl === 0 ? "Sem aumento" : `+ R$ ${item.estimatedDeltaBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}`} · ${item.reserveCovers ? "coberto" : "não coberto"}</span><span>${item.autoEligible ? "Dentro do limite autônomo" : "Acima do limite autônomo"}</span></div>
-          ${item.status === "pending_approval" ? `<div class="approval-actions"><button type="button" data-session-id="${approval.sessionId}" data-action-id="${item.id}" data-decision="authorized">Autorizar preparação</button><button type="button" class="reject" data-session-id="${approval.sessionId}" data-action-id="${item.id}" data-decision="rejected">Rejeitar</button></div>` : `<div class="decision-stamp">${item.status === "authorized" ? "Autorização registrada" : "Recusa registrada"} · ${item.decidedAt ? new Date(item.decidedAt).toLocaleString() : ""}</div>`}
+          <div class="approval-meta"><span>${item.estimatedDeltaBrl === null ? "Cost pending" : `${item.estimatedDeltaBrl === 0 ? "No increase" : `+ R$ ${item.estimatedDeltaBrl.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}`} · ${item.reserveCovers ? "covered" : "not covered"}</span><span>${item.autoEligible ? "Within autonomy limit" : "Above autonomy limit"}</span></div>
+          ${item.status === "pending_approval" ? `<div class="approval-actions"><button type="button" data-session-id="${approval.sessionId}" data-action-id="${item.id}" data-decision="authorized">Authorize preparation</button><button type="button" class="reject" data-session-id="${approval.sessionId}" data-action-id="${item.id}" data-decision="rejected">Reject</button></div>` : `<div class="decision-stamp">${item.status === "authorized" ? "Authorization recorded" : "Rejection recorded"} · ${item.decidedAt ? new Date(item.decidedAt).toLocaleString() : ""}</div>`}
         </article>`).join("")}</div>
         <div class="approval-ledger"><b>Audit ledger</b><span>${approval.ledger.length} evento(s) · atualizado ${new Date(approval.updatedAt).toLocaleString()}</span></div>
         <small>${approval.policy.rule} ${approval.disclaimer}</small>
@@ -179,7 +179,7 @@ function renderPlan(plan) {
     ? `<section class="hotel-layer">
         <div class="hotel-heading"><div><span>EVENT-CENTERED HOTEL LAYER</span><h3>${hotels.hotels.length} ${hotels.fallback ? "demo scenarios" : "mapped options"} inside ${hotels.radiusKm} km</h3></div><strong>${hotels.fallback ? "DEMO DATA" : `${hotels.found} found`}</strong></div>
         <div class="hotel-map"><i class="event-pin" style="left:50%;top:50%">★</i>${hotels.hotels.map((hotel, index) => `<i class="hotel-pin" style="left:${50 + Math.max(-43, Math.min(43, (hotel.longitude - plan.protectionZone.center.longitude) / (plan.protectionZone.boundingBox.east - plan.protectionZone.center.longitude) * 43))}%;top:${50 - Math.max(-43, Math.min(43, (hotel.latitude - plan.protectionZone.center.latitude) / (plan.protectionZone.boundingBox.north - plan.protectionZone.center.latitude) * 43))}%">${index + 1}</i>`).join("")}<small>Event-centered relative map · not a routing map</small></div>
-        <div class="hotel-grid">${hotels.hotels.map((hotel, index) => `<article class="selectable-option"><label class="option-choice"><input type="radio" name="selectedHotel" value="${hotel.id}" ${index === 0 ? "checked" : ""}> Selecionar</label><div><em>${index + 1}</em><b>${hotel.name}</b></div><strong>${hotel.distanceKm} km</strong><p>${hotel.type.replaceAll("_", " ")} ${hotel.stars ? `· ${hotel.stars} stars` : ""}</p><span>Tier estimate R$ ${hotel.estimatedNightlyBrl.toLocaleString()}/night · fit ${hotel.fitScore}</span><a href="${hotel.mapUrl}" target="_blank" rel="noopener noreferrer">Open mapped location →</a></article>`).join("")}</div>
+        <div class="hotel-grid">${hotels.hotels.map((hotel, index) => `<article class="selectable-option"><label class="option-choice"><input type="radio" name="selectedHotel" value="${hotel.id}" ${index === 0 ? "checked" : ""}> Select</label><div><em>${index + 1}</em><b>${hotel.name}</b></div><strong>${hotel.distanceKm} km</strong><p>${hotel.type.replaceAll("_", " ")} ${hotel.stars ? `· ${hotel.stars} stars` : ""}</p><span>Tier estimate R$ ${hotel.estimatedNightlyBrl.toLocaleString()}/night · fit ${hotel.fitScore}</span><a href="${hotel.mapUrl}" target="_blank" rel="noopener noreferrer">Open mapped location →</a></article>`).join("")}</div>
         <small>${hotels.disclaimer} Source: ${hotels.source}.</small>
       </section>`
     : `<section class="hotel-layer unavailable"><h3>Hotel geography temporarily unavailable</h3><p>${hotels?.reason || "No mapped accommodation was returned inside the selected radius."}</p><small>${hotels?.disclaimer || "Live Duffel Stays inventory remains pending."}</small></section>`;
@@ -194,8 +194,8 @@ function renderPlan(plan) {
   const risk = plan.riskAssessment;
   const riskCard = risk
     ? `<section class="risk-card ${risk.riskLevel}">
-        <div class="risk-heading"><div><span>OPERATIONAL RISK LAYER</span>${["high", "critical"].includes(risk.riskLevel) ? `<h3>RISCO ${risk.riskLevel === "critical" ? "CRÍTICO" : "ALTO"}</h3><p>${risk.risks.find((item) => ["critical", "high"].includes(item.severity))?.title || risk.summary}</p>` : ""}</div><strong>${risk.riskScore}<small>/100 risk</small></strong></div>
-        <details class="risk-analysis"><summary>Ver análise completa · ${risk.risks.length} alerta(s)</summary>
+        <div class="risk-heading"><div><span>OPERATIONAL RISK LAYER</span>${["high", "critical"].includes(risk.riskLevel) ? `<h3>${risk.riskLevel === "critical" ? "CRITICAL" : "HIGH"} RISK</h3><p>${risk.risks.find((item) => ["critical", "high"].includes(item.severity))?.title || risk.summary}</p>` : ""}</div><strong>${risk.riskScore}<small>/100 risk</small></strong></div>
+        <details class="risk-analysis"><summary>View full analysis · ${risk.risks.length} alert(s)</summary>
           ${risk.flightComparison?.triggered ? `<div class="flight-tradeoff"><b>CHEAPEST vs MOST DIRECT</b><span>${risk.flightComparison.cheapest.airline}: ${risk.flightComparison.cheapest.durationHours}h · ${risk.flightComparison.mostDirect.airline}: ${risk.flightComparison.mostDirect.durationHours}h</span><strong>Save ${risk.flightComparison.extraHours}h for ${risk.flightComparison.priceDifference >= 0 ? "+" : "−"}${risk.flightComparison.mostDirect.currency} ${Math.abs(risk.flightComparison.priceDifference).toFixed(2)}</strong></div>` : ""}
           <div class="risk-list">${risk.risks.map((item) => `<article class="${item.severity}"><div><em>${item.severity}</em><b>${item.title}</b></div><p>${item.evidence} ${item.impact}</p><span>Mitigation: ${item.mitigation}</span></article>`).join("")}</div>
           <small>${risk.disclaimer}</small>
@@ -217,8 +217,8 @@ function renderPlan(plan) {
   const decision = plan.decision;
   const planningHandoff = plan.nextStep
     ? `<section class="planning-handoff">
-        <div><span>PRÓXIMA ETAPA</span><h3>${plan.nextStep.label}</h3><p>${plan.nextStep.note}</p></div>
-        <button type="button" data-open-reservation>Revisar escolhas →</button>
+        <div><span>NEXT STEP</span><h3>${plan.nextStep.label}</h3><p>${plan.nextStep.note}</p></div>
+        <button type="button" data-open-reservation>Review choices →</button>
       </section>`
     : "";
   const decisionCard = decision
@@ -309,18 +309,18 @@ function openReservationReview() {
   const mobility = modes.find((item) => item.id === selectedMobilityId) || modes[0];
   const bookableFlight = Boolean(flight?.id?.startsWith("off_"));
   const passengerCount = Math.max(1, Number(tripInput?.travelers) || 1);
-  const passengerFields = bookableFlight ? Array.from({ length: passengerCount }, (_, index) => `<fieldset class="passenger-fields"><legend>Passageiro ${index + 1} · ambiente de teste</legend><div class="passenger-grid"><label>Tratamento<select name="passengerTitle"><option value="ms">Sra.</option><option value="mrs">Sra. (casada)</option><option value="mr">Sr.</option><option value="miss">Srta.</option></select></label><label>Gênero<select name="passengerGender"><option value="f">Feminino</option><option value="m">Masculino</option></select></label><label>Nome<input name="passengerGivenName" required maxlength="20"></label><label>Sobrenome<input name="passengerFamilyName" required maxlength="20"></label><label>Nascimento<input name="passengerBornOn" type="date" required></label><label>E-mail<input name="passengerEmail" type="email" required></label><label>DDI<select name="passengerCountryCode"><option value="+55" selected>🇧🇷 Brasil · +55</option><option value="+351">🇵🇹 Portugal · +351</option><option value="+1">🇺🇸/🇨🇦 EUA/Canadá · +1</option><option value="+34">🇪🇸 Espanha · +34</option><option value="+44">🇬🇧 Reino Unido · +44</option><option value="+33">🇫🇷 França · +33</option><option value="+49">🇩🇪 Alemanha · +49</option><option value="+39">🇮🇹 Itália · +39</option><option value="+54">🇦🇷 Argentina · +54</option><option value="+598">🇺🇾 Uruguai · +598</option><option value="+56">🇨🇱 Chile · +56</option><option value="custom">🌐 Outro DDI</option></select></label><label>DDD + telefone<input name="passengerPhoneLocal" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="11999999999" required></label><label class="custom-ddi hidden">Digite o DDI<input name="passengerCustomCountryCode" type="tel" inputmode="numeric" placeholder="+000" maxlength="5"></label></div></fieldset>`).join("") : "";
+  const passengerFields = bookableFlight ? Array.from({ length: passengerCount }, (_, index) => `<fieldset class="passenger-fields"><legend>Passenger ${index + 1} · test environment</legend><div class="passenger-grid"><label>Title<select name="passengerTitle"><option value="ms">Ms</option><option value="mrs">Mrs</option><option value="mr">Mr</option><option value="miss">Miss</option></select></label><label>Gender<select name="passengerGender"><option value="f">Female</option><option value="m">Male</option></select></label><label>Given name<input name="passengerGivenName" required maxlength="20"></label><label>Family name<input name="passengerFamilyName" required maxlength="20"></label><label>Date of birth<input name="passengerBornOn" type="date" required></label><label>Email<input name="passengerEmail" type="email" required></label><label>Country calling code<select name="passengerCountryCode"><option value="+55" selected>🇧🇷 Brazil · +55</option><option value="+351">🇵🇹 Portugal · +351</option><option value="+1">🇺🇸/🇨🇦 USA/Canada · +1</option><option value="+34">🇪🇸 Spain · +34</option><option value="+44">🇬🇧 United Kingdom · +44</option><option value="+33">🇫🇷 France · +33</option><option value="+49">🇩🇪 Germany · +49</option><option value="+39">🇮🇹 Italy · +39</option><option value="+54">🇦🇷 Argentina · +54</option><option value="+598">🇺🇾 Uruguay · +598</option><option value="+56">🇨🇱 Chile · +56</option><option value="custom">🌐 Other code</option></select></label><label>Area code + phone<input name="passengerPhoneLocal" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="11999999999" required></label><label class="custom-ddi hidden">Enter country code<input name="passengerCustomCountryCode" type="tel" inputmode="numeric" placeholder="+000" maxlength="5"></label></div></fieldset>`).join("") : "";
   reservationReview.innerHTML = `<div class="reservation-review-card">
     <div class="review-grid">
-      <article><span>VOO</span><h3>${flight ? flight.airline : "A definir"}</h3><p>${flight ? `${flight.currency} ${flight.amount.toFixed(2)} · ${flight.stops === 0 ? "direto" : `${flight.stops} escala(s)`}` : "Busca indisponível; não será emitido."}</p></article>
-      <article><span>HOTEL</span><h3>${hotel?.name || "Seleção comercial pendente"}</h3><p>${hotel ? `${hotel.distanceKm} km do evento · estimativa R$ ${hotel.estimatedNightlyBrl}/noite` : "Nenhuma disponibilidade comercial confirmada."}</p></article>
-      <article><span>MOBILIDADE</span><h3>${mobility?.label || "A definir"}</h3><p>${mobility ? `${mobility.estimatedMinutes} min · EUR ${mobility.estimatedTripCostEur.toFixed(2)}` : "Seleção pendente."}</p></article>
-      <article><span>ORÇAMENTO TOTAL</span><h3>R$ ${activePlan.completeBudget?.requested?.totalBrl?.toLocaleString(undefined, {minimumFractionDigits:2}) || "—"}</h3><p>Inclui reserva de emergência; valores de hotel podem ser estimados.</p></article>
+      <article><span>FLIGHT</span><h3>${flight ? flight.airline : "To be defined"}</h3><p>${flight ? `${flight.currency} ${flight.amount.toFixed(2)} · ${flight.stops === 0 ? "direct" : `${flight.stops} stop(s)`}` : "Search unavailable; no ticket will be issued."}</p></article>
+      <article><span>HOTEL</span><h3>${hotel?.name || "Commercial selection pending"}</h3><p>${hotel ? `${hotel.distanceKm} km from the event · estimated R$ ${hotel.estimatedNightlyBrl}/night` : "No commercial availability confirmed."}</p></article>
+      <article><span>MOBILITY</span><h3>${mobility?.label || "To be defined"}</h3><p>${mobility ? `${mobility.estimatedMinutes} min · EUR ${mobility.estimatedTripCostEur.toFixed(2)}` : "Selection pending."}</p></article>
+      <article><span>TOTAL BUDGET</span><h3>R$ ${activePlan.completeBudget?.requested?.totalBrl?.toLocaleString(undefined, {minimumFractionDigits:2}) || "—"}</h3><p>Includes an emergency reserve; hotel values may be estimates.</p></article>
     </div>
-    ${bookableFlight ? `<section class="duffel-passengers"><span>EMISSÃO AÉREA · AMBIENTE DE TESTE</span><h3>Dados dos passageiros</h3><p>Os dados serão enviados ao fornecedor somente depois da sua confirmação. Não informe passaporte nesta versão.</p>${passengerFields}</section>` : flight ? `<section class="duffel-passengers"><span>CENÁRIO DE CONTINGÊNCIA</span><h3>Comparação disponível; emissão desativada</h3><p>Esta alternativa pertence ao dataset demonstrativo e não será enviada ao fornecedor. Faça uma nova busca quando o sandbox estiver acessível.</p></section>` : ""}
-    <label class="confirmation-check"><input id="accept-reservation" type="checkbox"> Confirmo estas escolhas e entendo que esta versão opera em sandbox/testnet, sem emissão ou cobrança real de fornecedores.</label>
-    <button id="confirm-reservation" type="button" data-flight-id="${flight?.id || ""}" data-hotel-id="${hotel?.id || ""}" data-mobility-id="${mobility?.id || ""}">Confirmar reserva demonstrativa →</button>
-    <small>Nenhuma compra, alteração ou cancelamento será executado sem aprovação explícita.</small>
+    ${bookableFlight ? `<section class="duffel-passengers"><span>FLIGHT ISSUANCE · TEST ENVIRONMENT</span><h3>Passenger details</h3><p>Data will be sent to the supplier only after your confirmation. Do not enter passport data in this version.</p>${passengerFields}</section>` : flight ? `<section class="duffel-passengers"><span>CONTINGENCY SCENARIO</span><h3>Comparison available; issuance disabled</h3><p>This alternative belongs to the demonstration dataset and will not be sent to the supplier. Run a new search when the sandbox is accessible.</p></section>` : ""}
+    <label class="confirmation-check"><input id="accept-reservation" type="checkbox"> I confirm these choices and understand that this version operates in sandbox/testnet without real supplier issuance or charges.</label>
+    <button id="confirm-reservation" type="button" data-flight-id="${flight?.id || ""}" data-hotel-id="${hotel?.id || ""}" data-mobility-id="${mobility?.id || ""}">Confirm demonstration booking →</button>
+    <small>No purchase, change, or cancellation will be performed without explicit approval.</small>
   </div>`;
   reservationStage.classList.remove("hidden");
   document.querySelector("#progress-confirm")?.classList.add("active");
@@ -329,23 +329,23 @@ function openReservationReview() {
 
 function tripCard(reservation) {
   const trip = reservation.trip || {};
-  const wallet = reservation.travelerWallet ? shortAddress(reservation.travelerWallet) : "Não conectada";
+  const wallet = reservation.travelerWallet ? shortAddress(reservation.travelerWallet) : "Not connected";
   const internalReference = reservation.internalReference || reservation.bookingReference;
   const supplierReferences = reservation.supplierReferences || { pnr: null, duffelOrderId: null, ticketNumbers: [] };
   return `<article class="active-trip-card">
     <div class="trip-status"><span>VIAGEM ATIVA · SANDBOX</span><b>Monitoramento preparado</b></div>
-    <div class="trip-title"><div><h3>${trip.destination || reservation.destination}</h3><p>${trip.eventName || "Viagem BIT Travels"}</p></div><div class="internal-reference"><span>REFERÊNCIA INTERNA BIT</span><strong>${internalReference}</strong></div></div>
-    <div class="trip-route"><b>${trip.origin || "Origem"}</b><i>→</i><b>${trip.destinationAirport || trip.destination || "Destino"}</b><span>${trip.departureDate || "Data pendente"} — ${trip.returnDate || "Data pendente"}</span></div>
+    <div class="trip-title"><div><h3>${trip.destination || reservation.destination}</h3><p>${trip.eventName || "BIT Travels trip"}</p></div><div class="internal-reference"><span>BIT INTERNAL REFERENCE</span><strong>${internalReference}</strong></div></div>
+    <div class="trip-route"><b>${trip.origin || "Origin"}</b><i>→</i><b>${trip.destinationAirport || trip.destination || "Destination"}</b><span>${trip.departureDate || "Date pending"} — ${trip.returnDate || "Date pending"}</span></div>
     <div class="trip-details">
-      <div><span>Voo</span><b>${reservation.flight?.airline || "Em seleção comercial"}</b><small>${reservation.flight?.flightNumber || "Sem bilhete emitido"}</small></div>
-      <div><span>Hospedagem</span><b>${reservation.hotel?.name || "Em seleção comercial"}</b><small>${reservation.hotel ? `${reservation.hotel.distanceKm} km do evento` : "Sem quarto reservado"}</small></div>
-      <div><span>Mobilidade</span><b>${reservation.mobility?.label || "A definir"}</b><small>${reservation.mobility ? `${reservation.mobility.estimatedMinutes} min estimados` : "Plano pendente"}</small></div>
+      <div><span>Flight</span><b>${reservation.flight?.airline || "Commercial selection"}</b><small>${reservation.flight?.flightNumber || "No ticket issued"}</small></div>
+      <div><span>Accommodation</span><b>${reservation.hotel?.name || "Commercial selection"}</b><small>${reservation.hotel ? `${reservation.hotel.distanceKm} km from the event` : "No room booked"}</small></div>
+      <div><span>Mobility</span><b>${reservation.mobility?.label || "To be defined"}</b><small>${reservation.mobility ? `${reservation.mobility.estimatedMinutes} estimated min` : "Plan pending"}</small></div>
       <div><span>Wallet</span><b>${wallet}</b><small>Stellar Testnet</small></div>
     </div>
-    <div class="supplier-references"><div><span>PNR DA COMPANHIA</span><b>${supplierReferences.pnr || "Não emitido"}</b></div><div><span>DUFFEL ORDER ID</span><b>${supplierReferences.duffelOrderId || "Não criado"}</b></div><div><span>BILHETE(S)</span><b>${supplierReferences.ticketNumbers?.length ? supplierReferences.ticketNumbers.join(" · ") : "Não emitido"}</b></div></div>
-    <div class="trip-audit"><span><b>Comprovante auditável · SHA-256</b><code>${reservation.auditReceipt.hash}</code></span><span><b>Confirmada em</b><code>${new Date(reservation.createdAt).toLocaleString()}</code></span></div>
-    <div class="trip-actions"><button type="button" data-trip-detail="${reservation.reservationId}">Ver detalhes da viagem</button><button type="button" data-open-protection="${reservation.reservationId}">Abrir Central de Proteção</button></div>
-    <div class="trip-detail-panel hidden" data-trip-panel="${reservation.reservationId}"><p>${reservation.notice}</p><ul><li>Nenhuma cobrança real realizada.</li><li>Monitoramento criado após confirmação.</li><li>Alterações futuras exigem aprovação explícita.</li></ul></div>
+    <div class="supplier-references"><div><span>AIRLINE PNR</span><b>${supplierReferences.pnr || "Not issued"}</b></div><div><span>DUFFEL ORDER ID</span><b>${supplierReferences.duffelOrderId || "Not created"}</b></div><div><span>TICKET(S)</span><b>${supplierReferences.ticketNumbers?.length ? supplierReferences.ticketNumbers.join(" · ") : "Not issued"}</b></div></div>
+    <div class="trip-audit"><span><b>Auditable record · SHA-256</b><code>${reservation.auditReceipt.hash}</code></span><span><b>Confirmed at</b><code>${new Date(reservation.createdAt).toLocaleString()}</code></span></div>
+    <div class="trip-actions"><button type="button" data-trip-detail="${reservation.reservationId}">View trip details</button><button type="button" data-open-protection="${reservation.reservationId}">Open Protection Center</button></div>
+    <div class="trip-detail-panel hidden" data-trip-panel="${reservation.reservationId}"><p>${reservation.notice}</p><ul><li>No real charge was performed.</li><li>Monitoring was created after confirmation.</li><li>Future changes require explicit approval.</li></ul></div>
   </article>`;
 }
 
@@ -363,18 +363,18 @@ async function renderMyTrips() {
   try {
     const response = await fetch(`/api/reservations${query}`);
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "Não foi possível carregar as viagens");
+    if (!response.ok) throw new Error(payload.detail || "Trips could not be loaded");
     tripsContent.innerHTML = payload.reservations.length
-      ? `<div class="trips-summary"><b>${payload.reservations.length}</b><span>viagem(ns) ativa(s)</span><small>Wallet: ${connectedWallet ? shortAddress(connectedWallet.address) : "modo demonstração"}</small></div><div class="trips-list">${payload.reservations.map(tripCard).join("")}</div>`
-      : `<div class="empty-trips"><h3>Nenhuma viagem ativa ainda</h3><p>Confirme uma recomendação no planejador para criar sua primeira viagem.</p><button type="button" data-back-planner>Planejar agora →</button></div>`;
+      ? `<div class="trips-summary"><b>${payload.reservations.length}</b><span>active trip(s)</span><small>Wallet: ${connectedWallet ? shortAddress(connectedWallet.address) : "demonstration mode"}</small></div><div class="trips-list">${payload.reservations.map(tripCard).join("")}</div>`
+      : `<div class="empty-trips"><h3>No active trips yet</h3><p>Confirm a planner recommendation to create your first trip.</p><button type="button" data-back-planner>Plan now →</button></div>`;
   } catch (error) {
-    tripsContent.innerHTML = `<div class="empty-trips"><h3>Não conseguimos carregar suas viagens</h3><p>${error.message}</p></div>`;
+    tripsContent.innerHTML = `<div class="empty-trips"><h3>We could not load your trips</h3><p>${error.message}</p></div>`;
   }
   myTrips.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function protectionVoucherCard(voucher) {
-  return `<article class="center-voucher"><div><span>${voucher.label}</span><strong>${voucher.amount} ${voucher.asset}</strong></div><p>${voucher.notification?.message || voucher.legalBasis}</p><code>${voucher.auditReceipt?.hash || "Hash pendente"}</code><small>${voucher.status === "redeemed" ? `Resgatado por ${voucher.redeemedBy}` : "Emitido · Testnet · uso por categoria"}</small></article>`;
+  return `<article class="center-voucher"><div><span>${voucher.label}</span><strong>${voucher.amount} ${voucher.asset}</strong></div><p>${voucher.notification?.message || voucher.legalBasis}</p><code>${voucher.auditReceipt?.hash || "Hash pending"}</code><small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Issued · Testnet · category-controlled use"}</small></article>`;
 }
 
 function renderProtectionState(reservation, protection) {
@@ -383,18 +383,18 @@ function renderProtectionState(reservation, protection) {
   const internalReference = reservation.internalReference || reservation.bookingReference;
   const verification = protection?.verification;
   const verificationBanner = verification
-    ? `<div class="flight-verification ${verification.verified ? "verified" : "pending"}"><i></i><div><b>${verification.verified ? `${verification.simulated ? "Cenário demonstrativo" : "Atraso confirmado externamente"} · ${verification.delayMinutes} min` : "Status ainda não confirmado"}</b><span>${verification.verified ? `${verification.source} · ${verification.status}` : "A fonte externa ainda não possui um status confirmável para este voo. O monitoramento continuará ativo."}</span></div><small>${verification.checkedAt ? new Date(verification.checkedAt).toLocaleString() : ""}</small></div>`
-    : `<div class="flight-verification idle"><i></i><div><b>Monitoramento preparado</b><span>Relate uma alteração para o agente cruzar o status com a fonte externa.</span></div></div>`;
+    ? `<div class="flight-verification ${verification.verified ? "verified" : "pending"}"><i></i><div><b>${verification.verified ? `${verification.simulated ? "Testnet demonstration" : "Delay externally confirmed"} · ${verification.delayMinutes} min` : "Status not confirmed yet"}</b><span>${verification.verified ? `${verification.source} · ${verification.status}` : "The external source does not yet have a confirmable status for this flight. Monitoring will continue."}</span></div><small>${verification.checkedAt ? new Date(verification.checkedAt).toLocaleString() : ""}</small></div>`
+    : `<div class="flight-verification idle"><i></i><div><b>Monitoring ready</b><span>Report a change so the agent can cross-check it with the external status source.</span></div></div>`;
   protectionContent.innerHTML = `<div class="protection-overview">
-    <article class="flight-monitor"><div class="monitor-top"><span>MONITORAMENTO ATIVO</span><b>${protection?.flight?.number || "Voo não emitido"}</b></div><h3>${reservation.trip?.origin || "Origem"} → ${reservation.trip?.destinationAirport || reservation.destination}</h3><p>${protection?.flight?.airline || reservation.flight?.airline || "Companhia pendente"} · referência BIT ${internalReference}</p><strong>${delay}<small>minutos de atraso</small></strong></article>
-    <article class="anac-rules"><span>ASSISTÊNCIA · RESOLUÇÃO ANAC 400/2016</span><div class="anac-timeline"><i class="active">Pontual</i><i class="${delay >= 60 ? "active" : ""}">1h<br>Comunicação</i><i class="${delay >= 120 ? "active" : ""}">2h<br>Alimentação</i><i class="${delay >= 240 ? "active" : ""}">4h<br>Reacomodação</i></div><small>Hotel depende de pernoite e localização do passageiro; no domicílio, aplica-se traslado quando cabível.</small></article>
+    <article class="flight-monitor"><div class="monitor-top"><span>ACTIVE MONITORING</span><b>${protection?.flight?.number || "Flight not issued"}</b></div><h3>${reservation.trip?.origin || "Origin"} → ${reservation.trip?.destinationAirport || reservation.destination}</h3><p>${protection?.flight?.airline || reservation.flight?.airline || "Airline pending"} · BIT reference ${internalReference}</p><strong>${delay}<small>minutes delayed</small></strong></article>
+    <article class="anac-rules"><span>ASSISTANCE · ANAC RESOLUTION 400/2016</span><div class="anac-timeline"><i class="active">On time</i><i class="${delay >= 60 ? "active" : ""}">1h<br>Communication</i><i class="${delay >= 120 ? "active" : ""}">2h<br>Meals</i><i class="${delay >= 240 ? "active" : ""}">4h<br>Reaccommodation</i></div><small>Hotel assistance depends on an overnight stay and the passenger's location; ground transport may apply in the passenger's home city.</small></article>
   </div>${verificationBanner}
-  <div class="protection-actions"><div><span>RELATO DO PASSAGEIRO · VERIFICAÇÃO EXTERNA</span><h3>Informar situação do voo</h3></div><button data-center-event="on_time">Informar pontual</button><button data-center-event="delayed_60">Relatar atraso 1h</button><button data-center-event="delayed_120">Relatar atraso 2h</button><button data-center-event="delayed_240" data-overnight="true">Relatar atraso 4h + pernoite</button></div>
-  <div class="testnet-demonstration"><div><span>DEMONSTRAÇÃO TRANSPARENTE · TESTNET</span><h3>Executar o ciclo completo de proteção</h3><p>Simula 2h de atraso para demonstrar emissão, notificação e auditoria. Não representa confirmação da companhia nem da Aviationstack.</p></div><button data-demo-delay>Demonstrar atraso de 2h</button></div>
+  <div class="protection-actions"><div><span>PASSENGER REPORT · EXTERNAL VERIFICATION</span><h3>Report flight status</h3></div><button data-center-event="on_time">Report on time</button><button data-center-event="delayed_60">Report 1h delay</button><button data-center-event="delayed_120">Report 2h delay</button><button data-center-event="delayed_240" data-overnight="true">Report 4h delay + overnight stay</button></div>
+  <div class="testnet-demonstration"><div><span>TRANSPARENT DEMONSTRATION · TESTNET</span><h3>Run the complete protection cycle</h3><p>Simulates a two-hour delay to demonstrate issuance, notification, and audit. It is not an airline or Aviationstack confirmation.</p></div><button data-demo-delay>Demonstrate a 2h delay</button></div>
   ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Direitos ativados</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.detail}</span></article>`).join("")}</div>` : ""}
-  ${protection?.recoveryActions?.length ? `<div class="recovery-actions"><div class="recovery-heading"><span>RECUPERAÇÃO DA VIAGEM</span><h3>Hotel e mobilidade vinculados</h3></div>${protection.recoveryActions.map((action) => `<article><div><b>${action.title}</b><span>${action.service?.name || "Serviço vinculado"}</span><p>${action.detail}</p><code>${action.auditHash}</code></div><aside><strong>${action.status.replaceAll("_", " ")}</strong>${action.status === "pending_approval" ? `<button data-recovery-action="${action.id}" data-decision="authorized">Autorizar em Testnet</button><button class="secondary" data-recovery-action="${action.id}" data-decision="rejected">Recusar</button>` : `<small>${action.execution?.note || "Decisão registrada e auditável."}</small>`}</aside></article>`).join("")}</div>` : ""}
-  ${vouchers.length ? `<div class="center-vouchers"><h3>Benefícios emitidos</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>Nenhum benefício necessário</h3><p>O voo está sendo monitorado. Vouchers aparecem aqui quando um gatilho elegível é registrado.</p></div>`}
-  <div class="center-audit"><div><span>TRILHA AUDITÁVEL</span><h3>${protection?.ledger?.length || 0} evento(s) registrado(s)</h3></div><code>Session ${protection?.sessionId || "não disponível"}</code><small>Todos os horários são registrados em formato ISO; vouchers incluem hash SHA-256 e referência legal.</small></div>`;
+  ${protection?.recoveryActions?.length ? `<div class="recovery-actions"><div class="recovery-heading"><span>TRIP RECOVERY</span><h3>Linked hotel and mobility services</h3></div>${protection.recoveryActions.map((action) => `<article><div><b>${action.title}</b><span>${action.service?.name || "Linked service"}</span><p>${action.detail}</p><code>${action.auditHash}</code></div><aside><strong>${action.status.replaceAll("_", " ")}</strong>${action.status === "pending_approval" ? `<button data-recovery-action="${action.id}" data-decision="authorized">Authorize in Testnet</button><button class="secondary" data-recovery-action="${action.id}" data-decision="rejected">Reject</button>` : `<small>${action.execution?.note || "Auditable decision recorded."}</small>`}</aside></article>`).join("")}</div>` : ""}
+  ${vouchers.length ? `<div class="center-vouchers"><h3>Issued benefits</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>No assistance required</h3><p>The flight is being monitored. Vouchers will appear here when an eligible trigger is recorded.</p></div>`}
+  <div class="center-audit"><div><span>AUDIT TRAIL</span><h3>${protection?.ledger?.length || 0} recorded event(s)</h3></div><code>Session ${protection?.sessionId || "unavailable"}</code><small>All times are recorded in ISO format; vouchers include a SHA-256 hash and legal reference.</small></div>`;
 }
 
 async function openProtectionCenter(reservationId = null) {
@@ -405,7 +405,7 @@ async function openProtectionCenter(reservationId = null) {
   protectionCenter.classList.remove("hidden");
   voucherWallet.classList.add("hidden");
   document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === protectionNav));
-  if (!activeReservation) protectionContent.innerHTML = `<div class="empty-trips"><h3>Nenhuma viagem ativa</h3><p>Confirme uma viagem antes de ativar a proteção.</p></div>`;
+  if (!activeReservation) protectionContent.innerHTML = `<div class="empty-trips"><h3>No active trip</h3><p>Confirm a trip before activating protection.</p></div>`;
   else {
     let protection = activeReservation.journeyProtection;
     if (protection?.sessionId) {
@@ -420,11 +420,11 @@ async function openProtectionCenter(reservationId = null) {
 
 function walletVoucherCard(voucher) {
   return `<article class="wallet-voucher ${voucher.status}">
-    <div class="wallet-voucher-top"><span>${voucher.label}</span><b>${voucher.status === "redeemed" ? "RESGATADO" : "DISPONÍVEL"}</b></div>
+    <div class="wallet-voucher-top"><span>${voucher.label}</span><b>${voucher.status === "redeemed" ? "REDEEMED" : "AVAILABLE"}</b></div>
     <div class="wallet-voucher-value"><strong>${voucher.amount}</strong><span>${voucher.asset}<small>Stellar Testnet</small></span></div>
     <p>${voucher.notification?.message || voucher.legalBasis}</p>
-    <div class="wallet-voucher-meta"><span><b>Validade</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Categorias</b>${voucher.validFor.join(" · ")}</span><span><b>Voo</b>${voucher.flightReference || "Não emitido"}</span><span><b>Reserva BIT Travels</b>${voucher.internalReference || "Não informada"}</span><span><b>PNR da companhia aérea</b>${voucher.bookingReference || "Não emitido"}</span><span><b>Emissor responsável</b>${voucher.issuer?.name || "Não identificado"}</span><span><b>Companhia vinculada ao voo</b>${voucher.issuer?.airline || "Não informada"}</span></div>
-    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · integridade do registro</b><code>${voucher.auditReceipt?.hash}</code><b>Carimbo de data e hora</b><code>${voucher.auditReceipt?.timestamp}</code><b>Liquidação Stellar</b><code>${voucher.settlement?.transactionHash || "Não realizada · crédito demonstrativo off-chain"}</code><small>${voucher.settlement?.note || ""}</small></div>
+    <div class="wallet-voucher-meta"><span><b>Valid until</b>${new Date(voucher.expiresAt).toLocaleString()}</span><span><b>Merchant categories</b>${voucher.validFor.join(" · ")}</span><span><b>Flight</b>${voucher.flightReference || "Not issued"}</span><span><b>BIT Travels booking</b>${voucher.internalReference || "Unavailable"}</span><span><b>Airline PNR</b>${voucher.bookingReference || "Not issued"}</span><span><b>Responsible issuer</b>${voucher.issuer?.name || "Unidentified"}</span><span><b>Airline linked to flight</b>${voucher.issuer?.airline || "Unavailable"}</span></div>
+    <div class="wallet-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm} · record integrity</b><code>${voucher.auditReceipt?.hash}</code><b>Timestamp</b><code>${voucher.auditReceipt?.timestamp}</code><b>Stellar settlement</b><code>${voucher.settlement?.transactionHash || "Not performed · off-chain demonstration credit"}</code><small>${voucher.settlement?.note || ""}</small></div>
   </article>`;
 }
 
@@ -432,17 +432,17 @@ async function openVoucherWallet() {
   hero.classList.add("hidden"); journeyProgress.classList.add("hidden"); plannerSection.classList.add("hidden"); reservationStage.classList.add("hidden"); myTrips.classList.add("hidden"); protectionCenter.classList.add("hidden");
   voucherWallet.classList.remove("hidden");
   document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === walletNav));
-  walletContent.innerHTML = `<div class="trips-loading">Carregando carteira e auditoria…</div>`;
+  walletContent.innerHTML = `<div class="trips-loading">Loading wallet and audit…</div>`;
   const query = connectedWallet ? `?travelerWallet=${encodeURIComponent(connectedWallet.address)}` : "";
   try {
     const response = await fetch(`/api/voucher-wallet${query}`);
     const report = await response.json();
-    if (!response.ok) throw new Error(report.detail || "Não foi possível carregar a carteira");
+    if (!response.ok) throw new Error(report.detail || "The wallet could not be loaded");
     activeWalletReport = report;
-    walletContent.innerHTML = `<div class="wallet-summary"><article><span>SALDO DISPONÍVEL</span><strong>${report.summary.availableUsdc}<small>USDC Testnet</small></strong></article><article><span>EMITIDOS</span><strong>${report.summary.count}<small>vouchers</small></strong></article><article><span>RESGATADOS</span><strong>${report.summary.redeemedUsdc}<small>USDC Testnet</small></strong></article></div>
-      ${report.vouchers.length ? `<div class="wallet-vouchers">${report.vouchers.map(walletVoucherCard).join("")}</div>` : `<div class="empty-wallet"><h3>Nenhum voucher emitido</h3><p>Os benefícios elegíveis aparecerão aqui após um evento registrado na Central de Proteção.</p></div>`}
-      <section class="audit-center"><div class="audit-center-heading"><div><span>AUDITORIA CONSOLIDADA</span><h3>Registros verificáveis</h3></div><button type="button" data-export-audit>Exportar relatório JSON</button></div><div class="audit-stats"><span><b>${report.audit.hashAlgorithm}</b>algoritmo de integridade</span><span><b>${report.audit.onChainSettlements}</b>liquidações on-chain</span><span><b>${new Date(report.audit.generatedAt).toLocaleString()}</b>relatório gerado</span></div><p>${report.audit.disclaimer}</p></section>`;
-  } catch (error) { walletContent.innerHTML = `<div class="empty-wallet"><h3>Carteira indisponível</h3><p>${error.message}</p></div>`; }
+    walletContent.innerHTML = `<div class="wallet-summary"><article><span>AVAILABLE BALANCE</span><strong>${report.summary.availableUsdc}<small>USDC Testnet</small></strong></article><article><span>ISSUED</span><strong>${report.summary.count}<small>vouchers</small></strong></article><article><span>REDEEMED</span><strong>${report.summary.redeemedUsdc}<small>USDC Testnet</small></strong></article></div>
+      ${report.vouchers.length ? `<div class="wallet-vouchers">${report.vouchers.map(walletVoucherCard).join("")}</div>` : `<div class="empty-wallet"><h3>No vouchers issued</h3><p>Eligible benefits will appear here after an event is recorded in the Protection Center.</p></div>`}
+      <section class="audit-center"><div class="audit-center-heading"><div><span>CONSOLIDATED AUDIT</span><h3>Verifiable records</h3></div><button type="button" data-export-audit>Export JSON report</button></div><div class="audit-stats"><span><b>${report.audit.hashAlgorithm}</b>integrity algorithm</span><span><b>${report.audit.onChainSettlements}</b>on-chain settlements</span><span><b>${new Date(report.audit.generatedAt).toLocaleString()}</b>report generated</span></div><p>${report.audit.disclaimer}</p></section>`;
+  } catch (error) { walletContent.innerHTML = `<div class="empty-wallet"><h3>Wallet unavailable</h3><p>${error.message}</p></div>`; }
   voucherWallet.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -486,7 +486,7 @@ form.addEventListener("submit", async (event) => {
   addStep(`Event protection zone set to ${tripInput.hotelRadiusKm} km`);
   addStep(`${tripInput.transportPreference.replaceAll("_", " ")} · maximum ${tripInput.maxCommuteMinutes} minutes`);
   await wait(350);
-  addStep("Inteligência premium da BIT Travels selecionada");
+  addStep("BIT Travels premium intelligence selected");
   await wait(350);
 
   const paidResponse = await fetch("/api/premium-trip-plan", { method: "POST", headers: { "content-type": "application/json", ...(connectedWallet ? { "x-traveler-wallet": connectedWallet.address } : {}) }, body: JSON.stringify(tripInput) });
@@ -584,7 +584,7 @@ reservationReview.addEventListener("click", async (event) => {
   const button = event.target.closest("#confirm-reservation");
   if (!button || !activePlan) return;
   const acceptedTerms = document.querySelector("#accept-reservation")?.checked;
-  if (!acceptedTerms) return window.alert("Confirme os termos da reserva demonstrativa para continuar.");
+  if (!acceptedTerms) return window.alert("Confirm the demonstration booking terms to continue.");
   const passengerFields = [...reservationReview.querySelectorAll(".passenger-fields")];
   const passengers = passengerFields.map((field) => {
     const selectedCode = field.querySelector('[name="passengerCountryCode"]').value;
@@ -601,9 +601,9 @@ reservationReview.addEventListener("click", async (event) => {
     };
   });
   const invalidPassenger = passengers.find((item) => !item.givenName || !item.familyName || !/^\d{4}-\d{2}-\d{2}$/.test(item.bornOn) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email) || !/^\+[1-9]\d{7,14}$/.test(item.phoneNumber));
-  if (invalidPassenger) return window.alert("Confira os dados dos passageiros. Selecione o DDI e informe DDD + telefone usando somente números.");
+  if (invalidPassenger) return window.alert("Review passenger data. Select the country calling code and enter area code + phone using digits only.");
   button.disabled = true;
-  button.textContent = "Criando viagem ativa…";
+  button.textContent = "Creating active trip…";
   try {
     const response = await fetch("/api/reservations", {
       method: "POST",
@@ -612,20 +612,20 @@ reservationReview.addEventListener("click", async (event) => {
     });
     let reservation = await response.json();
     if (!response.ok) throw new Error(reservation.detail || `Reservation API returned ${response.status}`);
-    let duffelMessage = "Sem oferta Duffel selecionada; nenhuma order aérea foi criada.";
+    let duffelMessage = "No Duffel offer selected; no flight order was created.";
     if (reservation.flight?.id?.startsWith("off_")) {
       const orderResponse = await fetch(`/api/reservations/${reservation.reservationId}/duffel-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passengers }) });
       const orderPayload = await orderResponse.json();
-      if (orderResponse.ok) { reservation = orderPayload; duffelMessage = `Duffel Order ${reservation.supplierReferences.duffelOrderId} criada em Test mode.`; }
-      else duffelMessage = `A viagem BIT foi salva, mas a emissão Duffel não ocorreu: ${orderPayload.detail || orderPayload.error}`;
-    } else if (reservation.flight?.id?.startsWith("demo_")) duffelMessage = "Cenário demonstrativo salvo sem emissão: nenhuma oferta comercial foi enviada à Duffel.";
+      if (orderResponse.ok) { reservation = orderPayload; duffelMessage = `Duffel Order ${reservation.supplierReferences.duffelOrderId} created in Test mode.`; }
+      else duffelMessage = `The BIT trip was saved, but Duffel issuance did not occur: ${orderPayload.detail || orderPayload.error}`;
+    } else if (reservation.flight?.id?.startsWith("demo_")) duffelMessage = "Demonstration scenario saved without issuance: no commercial offer was sent to Duffel.";
     activePlan.reservation = reservation;
     activePlan.approvalQueue = reservation.approvalQueue;
     activePlan.journeyProtection = reservation.journeyProtection;
-    reservationReview.innerHTML = `<div class="reservation-success"><span>VIAGEM ATIVA · DUFFEL TEST MODE</span><h2>Viagem ${reservation.internalReference || reservation.bookingReference} confirmada</h2><p>${duffelMessage}</p><div><b>Referência interna BIT</b><strong>${reservation.internalReference || reservation.bookingReference}</strong></div><div><b>PNR da companhia</b><strong>${reservation.supplierReferences?.pnr || "Não emitido"}</strong></div><div><b>Duffel Order ID</b><strong>${reservation.supplierReferences?.duffelOrderId || "Não criado"}</strong></div><div><b>Bilhete</b><strong>${reservation.supplierReferences?.ticketNumbers?.join(" · ") || "Não emitido"}</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Carimbo de data e hora</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><button type="button" data-open-trips>Abrir Minhas viagens →</button><small>Test mode: nenhuma reserva real ou movimentação de dinheiro.</small></div>`;
+    reservationReview.innerHTML = `<div class="reservation-success"><span>ACTIVE TRIP · DUFFEL TEST MODE</span><h2>Trip ${reservation.internalReference || reservation.bookingReference} confirmed</h2><p>${duffelMessage}</p><div><b>BIT internal reference</b><strong>${reservation.internalReference || reservation.bookingReference}</strong></div><div><b>Airline PNR</b><strong>${reservation.supplierReferences?.pnr || "Not issued"}</strong></div><div><b>Duffel Order ID</b><strong>${reservation.supplierReferences?.duffelOrderId || "Not created"}</strong></div><div><b>Ticket</b><strong>${reservation.supplierReferences?.ticketNumbers?.join(" · ") || "Not issued"}</strong></div><div><b>Audit hash · SHA-256</b><code>${reservation.auditReceipt.hash}</code></div><div><b>Timestamp</b><code>${new Date(reservation.auditReceipt.timestamp).toISOString()}</code></div><button type="button" data-open-trips>Open My trips →</button><small>Test mode: no real booking or transfer of funds.</small></div>`;
   } catch (error) {
     button.disabled = false;
-    button.textContent = "Confirmar reserva demonstrativa →";
+    button.textContent = "Confirm demonstration booking →";
     window.alert(error.message);
   }
 });
@@ -648,7 +648,7 @@ tripsContent.addEventListener("click", (event) => {
   if (!button) return;
   const panel = tripsContent.querySelector(`[data-trip-panel="${button.dataset.tripDetail}"]`);
   panel?.classList.toggle("hidden");
-  button.textContent = panel?.classList.contains("hidden") ? "Ver detalhes da viagem" : "Ocultar detalhes";
+  button.textContent = panel?.classList.contains("hidden") ? "View trip details" : "Hide trip details";
 });
 
 protectionContent.addEventListener("click", async (event) => {
@@ -658,7 +658,7 @@ protectionContent.addEventListener("click", async (event) => {
     try {
       const response = await fetch(`/api/protection-sessions/${activeReservation.journeyProtection.sessionId}/recovery-actions/${recoveryButton.dataset.recoveryAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ decision: recoveryButton.dataset.decision }) });
       const protection = await response.json();
-      if (!response.ok) throw new Error(protection.detail || "Falha ao registrar decisão");
+      if (!response.ok) throw new Error(protection.detail || "Failed to record decision");
       activeReservation.journeyProtection = protection;
       renderProtectionState(activeReservation, protection);
     } catch (error) { recoveryButton.disabled = false; window.alert(error.message); }
@@ -674,7 +674,7 @@ protectionContent.addEventListener("click", async (event) => {
     const endpoint = button.hasAttribute("data-demo-delay") ? "demo-delay" : "events";
     const response = await fetch(`/api/protection-sessions/${sessionId}/${endpoint}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: button.dataset.centerEvent, context: { overnightRequired: button.dataset.overnight === "true", atHomeCity: false } }) });
     const protection = await response.json();
-    if (!response.ok) throw new Error(protection.detail || "Falha ao registrar evento");
+    if (!response.ok) throw new Error(protection.detail || "Failed to record event");
     activeReservation.journeyProtection = protection;
     renderProtectionState(activeReservation, protection);
   } catch (error) { button.disabled = false; button.textContent = originalLabel; window.alert(error.message); }

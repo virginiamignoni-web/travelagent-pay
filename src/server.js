@@ -105,7 +105,7 @@ app.post("/api/reservations/:reservationId/duffel-order", async (req, res, next)
     reservation.duffelOrder = order;
     reservation.status = order.status === "confirmed" ? "confirmed_duffel_test" : "pending_duffel_test";
     reservation.supplierExecution.flightTicketIssued = order.documents.length > 0;
-    reservation.notice = "Duffel Order criada em Test mode. Nenhuma reserva real ou movimentação de dinheiro ocorreu.";
+    reservation.notice = "Duffel Order created in Test mode. No real booking or transfer of funds occurred.";
     return res.status(order.status === "pending" ? 202 : 201).json(saveReservation(reservation));
   } catch (error) { return next(error); }
 });
@@ -184,13 +184,20 @@ app.get("/api/voucher-wallet", (req, res) => {
   const vouchers = findVouchers({ travelerWallet }).map((voucher) => {
     const reservation = reservations.find((item) => item.journeyProtection?.sessionId === voucher.protectionSessionId);
     const storedPnr = voucher.bookingReference && !/não informada/i.test(voucher.bookingReference) ? voucher.bookingReference : null;
-    return {
+    const labels = { meal: "Meal Voucher", transport: "Ground Transport Voucher", hotel: "Accommodation Voucher" };
+    const legalBasis = voucher.type === "meal" ? "Article 27(II) of ANAC Resolution No. 400/2016" : "Article 27(III) of ANAC Resolution No. 400/2016";
+    const normalized = {
       ...voucher,
+      label: labels[voucher.type] || voucher.label,
+      legalBasis,
       internalReference: voucher.internalReference && !/não informada/i.test(voucher.internalReference) ? voucher.internalReference : reservation?.internalReference || null,
       bookingReference: storedPnr || reservation?.supplierReferences?.pnr || null,
       issuer: voucher.issuer || { name: "BIT Travels Journey Protection Engine", type: "platform_testnet_demo", airline: reservation?.flight?.airline || null, authenticatedExternalInstruction: false },
       settlement: { fundingSource: "none_demo_credit", ...voucher.settlement },
     };
+    if (normalized.notification) normalized.notification = { ...normalized.notification, title: `${normalized.label} issued`, message: `${normalized.label} for ${normalized.amount} USDC Testnet issued under ${legalBasis}, for flight ${normalized.flightReference} and ${normalized.internalReference ? `BIT booking ${normalized.internalReference}` : "the monitored trip"}${normalized.bookingReference ? ` and PNR ${normalized.bookingReference}` : ""}.` };
+    if (!normalized.settlement.transactionHash) normalized.settlement.note = "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.";
+    return normalized;
   });
   const issued = vouchers.filter((item) => item.status === "issued");
   const redeemed = vouchers.filter((item) => item.status === "redeemed");
@@ -200,7 +207,7 @@ app.get("/api/voucher-wallet", (req, res) => {
     travelerWallet,
     summary: { count: vouchers.length, availableCount: issued.length, redeemedCount: redeemed.length, issuedUsdc: total(vouchers), availableUsdc: total(issued), redeemedUsdc: total(redeemed) },
     vouchers,
-    audit: { generatedAt: new Date().toISOString(), hashAlgorithm: "SHA-256", onChainSettlements: vouchers.filter((item) => item.settlement?.transactionHash).length, disclaimer: "Valores e liquidação são demonstrativos em Testnet; os hashes comprovam a integridade do registro do protótipo." },
+    audit: { generatedAt: new Date().toISOString(), hashAlgorithm: "SHA-256", onChainSettlements: vouchers.filter((item) => item.settlement?.transactionHash).length, disclaimer: "Values and settlement are demonstrative on Testnet; hashes prove the integrity of the prototype records." },
   });
 });
 
@@ -297,9 +304,9 @@ app.post("/api/premium-trip-plan", async (req, res, next) => {
     plan.productStage = "planning";
     plan.nextStep = {
       id: "review_and_reserve",
-      label: "Revisar e reservar",
+      label: "Review and book",
       available: true,
-      note: "A reserva, a carteira da viagem e o monitoramento serão criados somente depois da confirmação do cliente.",
+      note: "The booking, trip wallet, and monitoring will be created only after traveler confirmation.",
     };
     const response = result.withReceipt(Response.json(plan));
     response.headers.forEach((value, key) => res.setHeader(key, value));

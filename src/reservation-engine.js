@@ -31,7 +31,7 @@ export function createReservation({ input = {}, selections = {}, plan = {}, trav
     budget: plan.completeBudget?.requested || null, travelerWallet,
     auditReceipt: { algorithm: "SHA-256", hash: hash(record), timestamp: createdAt },
     supplierExecution: { flightTicketIssued: false, hotelBooked: false, charged: false },
-    notice: "Viagem demonstrativa confirmada em sandbox. O código BIT é uma referência interna; nenhum PNR, Duffel Order, bilhete, quarto ou cobrança real foi emitido junto a fornecedores.",
+    notice: "Demonstration trip confirmed in sandbox. The BIT code is an internal reference; no real PNR, Duffel Order, ticket, room, or supplier charge was issued.",
   };
   return persistReservation(reservation);
 }
