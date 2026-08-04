@@ -13,6 +13,9 @@ function summarizeOffer(offer) {
     id: offer.id,
     airline: offer.owner?.name || "Airline unavailable",
     airlineCode: offer.owner?.iata_code || null,
+    flightNumber: segments[0]?.marketing_carrier_flight_number
+      ? `${segments[0]?.marketing_carrier?.iata_code || offer.owner?.iata_code || ""}${segments[0].marketing_carrier_flight_number}`
+      : null,
     amount: Number(offer.total_amount),
     currency: offer.total_currency,
     departureAt: segments[0]?.departing_at || null,

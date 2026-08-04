@@ -5,15 +5,19 @@ const vouchers = new Map();
 const VALID_EVENTS = ["on_time", "delayed_60", "delayed_120", "delayed_240"];
 
 const BENEFIT_RULES = {
-  meal: { label: "Voucher Alimentação", amount: "15.00", validFor: ["restaurant", "cafe", "airport_food"] },
-  transport: { label: "Voucher Transporte", amount: "25.00", validFor: ["airport_transport", "taxi", "ride_hailing"] },
-  hotel: { label: "Voucher Hospedagem", amount: "80.00", validFor: ["hotel", "airport_hotel"] },
+  meal: { label: "Voucher Alimentação", amount: "15.00", validFor: ["restaurant", "cafe", "airport_food"], legalBasis: "Art. 27, inciso II, da Resolução ANAC nº 400/2016" },
+  transport: { label: "Voucher Transporte", amount: "25.00", validFor: ["airport_transport", "taxi", "ride_hailing"], legalBasis: "Art. 27, inciso III, da Resolução ANAC nº 400/2016" },
+  hotel: { label: "Voucher Hospedagem", amount: "80.00", validFor: ["hotel", "airport_hotel"], legalBasis: "Art. 27, inciso III, da Resolução ANAC nº 400/2016" },
 };
 
 function clone(value) { return structuredClone(value); }
 function now() { return new Date().toISOString(); }
 function redemptionCode(voucherId) {
   return createHash("sha256").update(`bit-travels-testnet:${voucherId}`).digest("hex").slice(0, 16).toUpperCase();
+}
+
+function auditHash(record) {
+  return createHash("sha256").update(JSON.stringify(record)).digest("hex");
 }
 
 function sessionVouchers(session) {
@@ -31,6 +35,21 @@ function issueVoucher(session, type) {
   const rule = BENEFIT_RULES[type];
   const issuedAt = now();
   const id = randomUUID();
+  const flightReference = session.flight.number || session.flight.airline || "voo não identificado";
+  const bookingReference = session.bookingReference || "reserva não informada";
+  const auditRecord = {
+    event: "benefit_issued",
+    voucherId: id,
+    type,
+    amount: rule.amount,
+    asset: "USDC",
+    network: "stellar:testnet",
+    issuedAt,
+    flightReference,
+    bookingReference,
+    legalBasis: rule.legalBasis,
+    travelerWallet: session.travelerWallet,
+  };
   const voucher = {
     id,
     code: redemptionCode(id),
@@ -44,6 +63,23 @@ function issueVoucher(session, type) {
     issuedAt,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     travelerWallet: session.travelerWallet,
+    flightReference,
+    bookingReference,
+    legalBasis: rule.legalBasis,
+    auditReceipt: {
+      hash: auditHash(auditRecord),
+      algorithm: "SHA-256",
+      timestamp: issuedAt,
+      record: auditRecord,
+    },
+    notification: {
+      id: randomUUID(),
+      channel: "in_app",
+      status: "delivered",
+      deliveredAt: issuedAt,
+      title: `${rule.label} emitido`,
+      message: `${rule.label} de ${rule.amount} USDC Testnet emitido conforme ${rule.legalBasis}, referente ao voo ${flightReference} e à reserva ${bookingReference}.`,
+    },
     settlement: {
       mode: "testnet_voucher_demo",
       onChain: false,
@@ -54,7 +90,7 @@ function issueVoucher(session, type) {
   };
   vouchers.set(id, voucher);
   session.voucherIds.push(id);
-  session.ledger.push({ at: issuedAt, event: "voucher_issued", voucherId: id, type, amount: voucher.amount, asset: voucher.asset });
+  session.ledger.push({ at: issuedAt, event: "voucher_issued", voucherId: id, type, amount: voucher.amount, asset: voucher.asset, auditHash: voucher.auditReceipt.hash, notificationId: voucher.notification.id });
   return voucher;
 }
 
@@ -87,7 +123,8 @@ export function createProtectionSession({ input = {}, primaryFlight } = {}) {
   const createdAt = now();
   const session = {
     sessionId: randomUUID(), createdAt, updatedAt: createdAt, status: "monitoring", currentEvent: "on_time", delayMinutes: 0,
-    flight: { airline: primaryFlight?.airline || "Flight pending", departureAt: primaryFlight?.departureAt || null, arrivalAt: primaryFlight?.arrivalAt || null, origin: input.origin || null, destination: input.destinationAirport || null },
+    flight: { airline: primaryFlight?.airline || "Flight pending", number: primaryFlight?.flightNumber || input.flightNumber || null, departureAt: primaryFlight?.departureAt || null, arrivalAt: primaryFlight?.arrivalAt || null, origin: input.origin || null, destination: input.destinationAirport || null },
+    bookingReference: String(input.bookingReference || "").trim().toUpperCase() || null,
     travelerWallet: input.travelerWallet || null,
     context: { overnightRequired: false, atHomeCity: false, specialAssistance: false },
     policy: {

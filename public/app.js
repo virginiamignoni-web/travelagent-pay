@@ -86,6 +86,8 @@ function renderPlan(plan) {
           <div class="voucher-value"><strong>${item.amount}</strong><span>${item.asset} · TESTNET</span></div>
           <h4>${item.label}</h4><p>Válido por 24 horas · categoria de uso controlada.</p>
           <div class="voucher-code" aria-label="Código de resgate"><i></i><i></i><i></i><i></i><b>${item.code}</b></div>
+          <div class="voucher-notification"><b>Notificação entregue</b><span>${item.notification.message}</span><small>${new Date(item.notification.deliveredAt).toLocaleString()}</small></div>
+          <div class="audit-proof"><span><b>Audit hash · ${item.auditReceipt.algorithm}</b><code>${item.auditReceipt.hash}</code></span><span><b>Carimbo de data e hora</b><code>${new Date(item.auditReceipt.timestamp).toISOString()}</code></span><span><b>Stellar transaction hash</b><code>${item.settlement.transactionHash || "Pendente de liquidação on-chain"}</code></span></div>
           ${item.status === "issued" ? `<button type="button" data-redeem-voucher="${item.id}" data-voucher-code="${item.code}" data-voucher-type="${item.type}">Simular resgate credenciado</button>` : `<div class="redeemed-stamp">✓ Resgatado por ${item.redeemedBy} · uso duplicado bloqueado</div>`}
           <small>${item.settlement.note}</small>
         </article>`;
