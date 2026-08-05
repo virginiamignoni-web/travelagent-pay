@@ -51,19 +51,20 @@
             <label>Destination airport<input name="destinationAirport" value="LIS" minlength="3" maxlength="3" required /></label>
           </div>
           <label>Destination city<input name="destination" value="Lisboa" required /></label>
+          <label>Event website <span class="field-optional">Optional</span><div class="event-website-field"><input name="eventWebsite" type="url" placeholder="https://official-event-site.com" /><button id="check-event-site" type="button">Check website</button></div></label>
+          <div id="event-site-status" class="event-site-status hidden" aria-live="polite"></div>
           <label>Main event or commitment<input name="eventName" value="Stellar Meridian" required /></label>
           <label>Event address<input name="eventAddress" value="Convento do Beato, Alameda do Beato, 1950-042 Lisboa, Portugal" required /></label>
-          <div class="split">
-            <label>Main commitment date and time<input name="eventStart" type="datetime-local" value="2026-09-17T09:00" required /></label>
-            <label>Event UTC offset<select name="eventUtcOffset"><option>-03:00</option><option>+00:00</option><option selected>+01:00</option><option>+02:00</option></select></label>
-          </div>
+          <label>Event date and time<input name="eventStart" type="datetime-local" value="2026-09-17T09:00" required /></label>
+          <input name="eventTimeZone" type="hidden" value="Europe/Lisbon" />
+          <input name="eventUtcOffset" type="hidden" value="+01:00" />
           <div class="split">
             <label>Departure date<input name="departureDate" type="date" value="2026-09-15" required /></label>
             <label>Return date<input name="returnDate" type="date" value="2026-09-20" required /></label>
           </div>
           <div class="split">
             <label>Travelers<input name="travelers" type="number" min="1" max="9" value="1" required /></label>
-            <label>Budget (BRL)<input name="budget" type="number" min="300" value="12000" required /></label>
+            <label>Maximum trip budget (USDC)<input name="budget" type="number" min="100" step="0.01" value="2200" required /><input name="budgetCurrency" type="hidden" value="USDC" /></label>
           </div>
           <div class="split">
             <label>Hotel radius<select name="hotelRadiusKm"><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option><option value="15">15 km</option></select></label>
@@ -73,7 +74,7 @@
           <label>Travel style<select name="travelStyle"><option>Balanced</option><option>Budget-conscious</option><option>Comfort</option></select></label>
           <label>Hotel preferences<textarea name="hotelPreferences" rows="3" placeholder="Breakfast, cancellation, accessibility, parking…">Breakfast included and flexible cancellation</textarea></label>
           <button type="submit">Plan with the concierge <span>→</span></button>
-          <p class="fine-print">Demo price: 0.01 test USDC per premium itinerary.</p>
+          <p class="fine-print">Agent service: 0.01 test USDC per premium itinerary. Travel bookings are paid separately.</p>
         </form>
 
         <section class="agent-card">
@@ -87,16 +88,17 @@
             <div class="agent-heading"><div class="mini-orb"></div><div><b>BIT Concierge active</b><span id="agent-city">Planning</span></div></div>
             <ol id="steps" class="steps"></ol>
             <section id="payment-panel" class="payment-panel" aria-live="polite">
-              <div class="payment-panel-heading"><div><span>AGENTIC PAYMENT · MPP</span><h3>HTTP 402 cycle</h3></div><b id="payment-mode-badge">STELLAR TESTNET</b></div>
+              <div class="payment-panel-heading"><div><span>AGENT SERVICE PAYMENT · MPP</span><h3>Pay for premium travel intelligence</h3></div><b id="payment-mode-badge">STELLAR TESTNET</b></div>
+              <p class="service-payment-note">This 0.01 test USDC payment covers the agent's research, comparison, budget, and risk analysis. It does not pay for flights, hotels, transportation, or booking issuance.</p>
               <div class="payment-flow">
                 <article id="payment-step-request"><i>1</i><div><b>Request service</b><small>Premium intelligence</small></div></article>
                 <article id="payment-step-402"><i>2</i><div><b>HTTP 402</b><small>0.01 USDC requested</small></div></article>
-                <article id="payment-step-settlement"><i>3</i><div><b>MPP settlement</b><small>Programmable payment</small></div></article>
-                <article id="payment-step-unlock"><i>4</i><div><b>Unlock</b><small>HTTP 200 response</small></div></article>
+                <article id="payment-step-settlement"><i>3</i><div><b>Agent service payment</b><small>MPP settlement</small></div></article>
+                <article id="payment-step-unlock"><i>4</i><div><b>Unlock analysis</b><small>HTTP 200 response</small></div></article>
               </div>
               <div id="payment-proof" class="payment-proof hidden"></div>
             </section>
-            <button id="approve-payment" class="pay-button hidden">Approve 0.01 test USDC <span>→</span></button>
+            <button id="approve-payment" class="pay-button hidden">Pay agent service — 0.01 test USDC <span>→</span></button>
             <div id="plan" class="plan hidden"></div>
           </div>
         </section>
@@ -123,8 +125,21 @@
       </section>
     </main>
 
+    <dialog id="pix-scanner" class="pix-scanner">
+      <form method="dialog" class="pix-scanner-card">
+        <div class="pix-scanner-heading"><div><span>PIX MERCHANT PAYMENT</span><h2>Scan Pix QR code</h2></div><button type="button" id="close-pix-scanner" aria-label="Close">×</button></div>
+        <p>Point the camera at the merchant's Pix QR code or paste the Pix Copy and Paste code.</p>
+        <div class="pix-camera"><video id="pix-camera-video" playsinline muted></video><div class="pix-camera-frame"></div><span id="pix-camera-status">Camera is off</span></div>
+        <div class="pix-scanner-actions"><button id="start-pix-camera" type="button">Open camera</button><button id="use-demo-pix" type="button">Use sandbox Pix code</button></div>
+        <label>Pix Copy and Paste<textarea id="pix-payload" rows="4" placeholder="000201…"></textarea></label>
+        <div id="demo-pix-notice" class="demo-pix-notice hidden"><b>Sandbox merchant loaded</b><span>BIT Airport Merchant · fake Pix request · no real recipient</span></div>
+        <button id="confirm-pix-qr" type="button">Continue Pix payment →</button>
+        <small>Test mode: the QR identifies the merchant payment request; no real BRL will move.</small>
+      </form>
+    </dialog>
+
     <footer><span>BIT Travels · tourism with a protection layer</span><span>Stellar · USDC · Testnet</span></footer>
     <script src="/vendor/freighter-api.js"></script>
-    <script type="module" src="/app.js?v=20260804-10"></script>
+    <script type="module" src="/app.js?v=20260805-11"></script>
   </body>
 </html>

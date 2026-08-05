@@ -1,122 +1,133 @@
-# BIT Travels Concierge
+# BIT Travels Passenger Recovery Platform
 
-BIT Travels Concierge is the autonomous travel-protection layer of BIT Travels. The demo purchases premium itinerary intelligence with **MPP Charge payments on Stellar Testnet** and demonstrates the complete machine-commerce loop:
+> No passenger should wait in line to receive a right they already have.
 
-`request → HTTP 402 → USDC payment → retry → protected itinerary`
+BIT Travels combines an AI travel concierge with an event-driven passenger recovery platform. The hackathon prototype demonstrates two connected Stellar use cases:
 
-After payment, the prototype can create a real flight offer request in **Duffel Developer Test mode**, compare the returned sandbox offers, and create a Duffel Order after explicit traveler confirmation. Every Duffel operation is forced to Test mode; no live commercial booking or charge is created.
+1. **Agentic Payments (HTTP 402 / MPP):** an autonomous agent requests premium travel intelligence, receives `402 Payment Required`, settles 0.01 test USDC on Stellar Testnet, retries, and unlocks the protected itinerary.
+2. **Brazil off-ramp for passenger assistance:** a verified flight disruption activates assistance rules, funds a passenger voucher in test USDC, and prepares its redemption to BRL/Pix through Etherfuse Sandbox.
 
-The product UI includes an **Agentic Payment** evidence panel that visualizes `request → HTTP 402 → MPP settlement → HTTP 200 unlock`. It distinguishes the current local rehearsal from a real Testnet run and links the verified transaction hash to Stellar Expert.
+The passenger sees planning, bookings, active trips, protection and a voucher wallet. Airlines, insurers and ground handlers gain a programmable assistance workflow and an auditable event record.
 
-The traveler request is centered on the purpose of the trip: origin, event name and address, travel dates, travelers, hotel radius, maximum commute, transport preference, budget, and accommodation preferences. The default hackathon scenario uses Stellar Meridian at Convento do Beato in Lisbon.
+## Judge in 60 seconds
 
-The protected result geocodes the event address, creates a configurable geographic protection zone, returns a bounding box for supplier searches, and exposes the verified center and radius in the interface. The Meridian landmark is cached for demo reliability; other addresses use OpenStreetMap Nominatim and are cached in memory.
+| Claim | Implementation | Automated evidence | External proof |
+|---|---|---|---|
+| Live HTTP 402 challenge and paid unlock | `src/payment.js`, `src/server.js`, `src/client.js` | `test/payment.test.js` | [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md) |
+| Real Stellar Testnet settlement | MPP Charge + USDC SAC | configuration validation + 402 contract test | [Stellar Expert transaction](https://stellar.expert/explorer/testnet/tx/bbcafe74b523e7c241c94eb680846ce63a3092cb7440fd0f0127f7d5a5c519a2) |
+| Non-custodial booking proof | `src/booking-stellar.js`, Freighter signing in `public/app.js` | `test/booking-stellar.test.js` | hash returned by the live demo |
+| Full symbolic voucher funding | `src/stellar-voucher-settlement.js`, `src/voucher-engine.js` | voucher settlement tests | explorer link stored with each new voucher |
+| USDC-to-BRL/Pix off-ramp | `src/etherfuse.js`, `src/etherfuse-stellar.js`, `src/server.js` | Etherfuse adapter and lifecycle tests | Etherfuse Sandbox order/status in the demo |
+| Persistent auditable journey | `src/database.js`, `src/reservation-engine.js` | persistence and recovery tests | SHA-256 record plus Stellar transaction metadata |
 
-The mobility protection layer compares walking, public transport, ride-hailing, and rental car against the traveler-defined commute limit. It estimates time, trip cost, and emissions, then explains its recommended mode. These figures are explicitly labeled as planning estimates until live routing is connected.
+For the complete traceability map, see [`BOUNTY_EVIDENCE.md`](./BOUNTY_EVIDENCE.md). For system boundaries and data flow, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
-The Bit Travels decision layer combines flight quality, mobility fit, event location, and budget fit into a transparent prototype protection score. It recommends a primary flight, retains the next suitable offer as Plan B, and explains the safeguards used. The score supports trip planning; it is not a safety guarantee. Hotel comparison remains visibly pending while Duffel Stays access is under review.
+## End-to-end flows
 
-The complete-budget layer adds flights, tier-based accommodation, food, mobility, local activities, and a 10% emergency reserve. When the requested plan exceeds the client's limit or commute rule, it raises a visible alert and tests alternative tiers and transport modes. Hotel and FX values remain labeled planning assumptions until live supplier and exchange-rate data are connected.
+### Lane 1 — agentic payment
 
-The operational-risk layer checks connections, itinerary duration, arrival margin before the main commitment, commute compliance, budget feasibility, and missing live supplier data. Each finding includes evidence, impact, severity, and a mitigation. The Bit Travels protection score is reduced by the modeled operational risk; it remains planning guidance rather than a safety or punctuality guarantee.
+```text
+Agent requests premium intelligence
+  -> provider returns HTTP 402 + machine-readable MPP challenge
+  -> autonomous Testnet wallet signs the USDC payment
+  -> server verifies and submits the settlement
+  -> agent retries with payment credential
+  -> provider returns HTTP 200 + protected trip intelligence
+  -> UI exposes the verifiable transaction hash
+```
 
-The flight trade-off rule compares the cheapest returned offer with the most direct available offer. If the cheap fare adds more than three scheduled hours, the interface warns the traveler and shows the exact time saved, stop difference, and additional price for the more direct option.
+### Lane 2 — passenger voucher off-ramp
 
-The contingency playbook turns the risk findings into conditional actions for flight disruption, hotel unavailability, mobility failure, and budget overrun. Each action shows its activation trigger, fallback, estimated incremental cost, and whether the modeled contingency capacity covers it. The prototype recommends changes but requires explicit traveler approval before any supplier purchase or itinerary change.
+```text
+PNR activates trip monitoring
+  -> flight disruption is confirmed
+  -> rules engine determines passenger assistance
+  -> Testnet airline treasury funds the symbolic voucher in USDC
+  -> voucher wallet stores issuer, legal basis, timestamp and hashes
+  -> passenger selects Pay with Pix and supplies a merchant QR payload
+  -> Etherfuse Sandbox creates the USDC/BRL quote and off-ramp order
+  -> passenger signs the Stellar transaction with Freighter
+  -> provider status completes redemption and the audit trail
+```
 
-The hotel geography layer queries OpenStreetMap through the Overpass API for mapped accommodation inside the client-selected event radius. It ranks results by proximity, plots them around the event, and links to each mapped object. These are real geographic records but not commercial offers: tier prices are estimates and availability, taxes, room details, quality, and cancellation remain unverified until Duffel Stays access is enabled.
+## Product architecture
 
-The controlled-autonomy layer creates a server-side approval session from the contingency playbook. Travelers can authorize or reject each proposed action through real API endpoints, and every decision is timestamped in an in-memory audit ledger. Authorization records permission to prepare the change; it does not claim to issue tickets, reserve rooms, charge suppliers, or alter bookings before those commercial APIs are connected.
+```text
+BIT Travels
+|-- Passenger experience
+|   |-- Plan a trip
+|   |-- Build and reserve
+|   |-- My trips
+|   `-- Voucher wallet
+`-- Passenger Recovery Platform
+    |-- Event engine
+    |-- Regulatory rules engine
+    |-- Voucher and payment engine
+    |-- Stellar audit and settlement layer
+    `-- Airline / insurer operational record
+```
 
-The first successful live Testnet payment is documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
-
-Passenger-assistance vouchers also have an on-chain issuance proof. When a new meal, transport, or accommodation voucher is created, the Testnet airline treasury sends a real `0.01 USDC` microtransfer to the connected traveler wallet and stores the Stellar transaction hash, ledger, source, destination, timestamp, and explorer link with the voucher. This microtransfer is only an issuance proof and is independent from the voucher's illustrative BRL face value.
-
-For the Brazil-first redemption scenario, benefit face values are presented in BRL: `R$ 50` for meals, `R$ 80` for airport transport, and `R$ 400` for accommodation. A category-matched sandbox merchant redeems the voucher, the off-ramp simulator records an indicative USDC/BRL quote, and a simulated Pix payout produces an auditable sandbox `endToEndId`. No BRL moves in this mode. Production requires a licensed PSP/off-ramp adapter, merchant onboarding, KYC/KYB, real quotes, and confirmed Pix settlement before redemption is finalized.
-
-## Why it exists
-
-Travel research is fragmented across dozens of services. TravelAgent Pay shows how an agent can purchase only the information it needs, at a transparent per-request price, without requiring the traveler to subscribe to every provider.
-
-## Demo modes
-
-- `PAYMENT_MODE=local`: synthetic 402 and receipt for interface development and rehearsals.
-- `PAYMENT_MODE=stellar`: real MPP Charge settlement in test USDC on Stellar Testnet.
-
-The interface clearly labels the local receipt as a demo. The hackathon video should show the real CLI settlement and transaction evidence from Testnet.
-
-## Wallet architecture
-
-- **Traveler wallet (Freighter):** connects in the browser, proves the traveler is on Testnet, and never exposes its secret key.
-- **Agent wallet (hot Testnet account):** holds a small allowance and signs MPP payments autonomously from the Node client.
-- **Provider wallet:** receives the 0.01 USDC payment for premium itinerary intelligence.
-- **Testnet airline treasury:** signs a 0.01 USDC issuance-proof transfer for every new assistance voucher.
-
-This separation is intentional: requiring a human Freighter approval for every request would stop the agent from operating autonomously.
+The blockchain layer stores transaction proof and record integrity—not passenger PII or full PNR data. See [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Quick start
 
+Requirements: Node.js 20+.
+
 ```bash
-npm install
+pnpm install
 copy .env.example .env
-npm start
+pnpm start
 ```
 
-Open `http://localhost:3001`.
+Open `http://localhost:3001`. The default `PAYMENT_MODE=local` is a safe UI rehearsal and clearly labels synthetic receipts.
 
-To enable flight search, create a Duffel Developer Test token with read/write scope and add it only to the ignored local `.env` file:
+Run the automated suite:
 
-```env
-DUFFEL_ACCESS_TOKEN=duffel_test_...
+```bash
+pnpm test
 ```
 
-The read/write scope is required because Duffel models a flight search as creation of an offer-request resource. Keep the account in Test mode.
+Run the machine-readable bounty verification:
 
-## Real Stellar Testnet flow
-
-1. Create two disposable Testnet accounts: buyer and seller.
-2. Fund both with Friendbot.
-3. Add the official Testnet USDC trustline.
-4. Fund the buyer with Testnet USDC using the Circle faucet.
-5. Set the seller public key as `STELLAR_RECIPIENT`.
-6. Set a strong random `MPP_SECRET_KEY`.
-7. Start the server with `PAYMENT_MODE=stellar`.
-8. Put the buyer's disposable Testnet secret in `.env` as `STELLAR_SECRET`.
-9. Run `npm run pay` in a second terminal.
-
-For a disposable autonomous agent wallet, run `npm run setup:agent -- G...PROVIDER_ADDRESS`. The helper always creates a new account, refuses to overwrite an existing wallet, funds it with Friendbot, creates its USDC Testnet trustline, and stores its secret only in the ignored local `.agent-wallet.env` file.
-
-Never commit `.env`, never use a production wallet secret, and never use a wallet holding real assets.
-
-## Architecture
-
-```text
-Traveler form
-    └── free trip preview
-          └── premium API request
-                ├── 402 + MPP challenge
-                ├── buyer signs USDC SAC transfer
-                ├── server verifies and broadcasts
-                └── 200 + receipt + premium itinerary
+```bash
+pnpm verify:bounty
 ```
 
-## Current scope
+To also resolve the published MPP transaction against Horizon Testnet, run `pnpm verify:bounty:online`. The repository includes [`BOUNTY_MANIFEST.json`](./BOUNTY_MANIFEST.json) for automated evaluators and a GitHub Actions workflow that runs the offline verification on every push.
 
-- Responsive product demo
-- Safe Freighter connection with enforced Testnet validation
-- Free planning preview
-- Payment-gated itinerary endpoint
-- Local rehearsal payment mode
-- Real MPP Charge configuration for Stellar Testnet
-- Real 0.01 USDC Testnet microsettlement and transaction hash for every newly issued voucher
-- Deterministic demo dataset for São Paulo, Rio de Janeiro, and Buenos Aires
-- Live sandbox flight-offer search through Duffel Developer Test mode
-- Unit tests for planning and budget logic
+Follow [`DEMO.md`](./DEMO.md) for the local, Stellar Testnet and Etherfuse Sandbox demonstrations.
 
-## Hackathon positioning
+## Integrations and truth labels
 
-TravelAgent Pay turns hours of travel research into minutes of autonomous work. It uses low-cost Stellar micropayments so an agent can purchase individual travel insights while respecting a traveler-defined budget.
+| Integration | Environment | What is real | What is simulated or limited |
+|---|---|---|---|
+| Stellar MPP / USDC | Testnet | 402 challenge, signature, settlement, hash | no production funds |
+| Freighter | Testnet | user-controlled transaction approval | test assets only |
+| Duffel Orders | Developer Test mode | API offer/order objects and sandbox PNR | no commercial ticket or charge |
+| Etherfuse | Sandbox | quote/order API and Stellar approval workflow | no production BRL/Pix settlement |
+| Aviationstack | configured API plan | provider response when endpoint is available | graceful pending verification when plan blocks it |
+| Hotels / mobility | planning layer | event geocoding and mapped hotel records | prices, availability and routing are estimates |
+| SQLite | local persistent store | reservations, vouchers and audit events | not a production multi-tenant database |
 
-## Safety and data integrity
+## Wallet separation
 
-The current dataset is intentionally demonstrative. It does not claim to provide live safety, pricing, or transport guarantees. Production use requires authoritative data sources, timestamps, provenance, and user-visible uncertainty.
+- **Traveler wallet (Freighter):** non-custodial Testnet signing; its secret never enters the application.
+- **Agent wallet:** disposable Testnet account with a small allowance for autonomous MPP payments.
+- **Premium service provider:** receives the 0.01 test USDC agent-service fee.
+- **Issuer treasury:** airline/insurer role that funds symbolic assistance vouchers on Testnet.
+
+This separation proves autonomous machine payment without pretending the traveler wallet is controlled by the agent.
+
+## Configuration safety
+
+Copy `.env.example` to the ignored `.env`. Never commit secrets, production wallet keys or live funds. The demo must use disposable Testnet wallets and sandbox credentials only.
+
+## Commercial thesis
+
+The initial model is B2B2C. Airlines, insurers, ground handlers or travel-management companies pay BIT Travels to automate disruption assistance. The passenger receives a simple digital benefit without needing to understand Stellar, USDC or the off-ramp provider.
+
+The platform targets reduced airport queues, faster assistance, lower manual reconciliation, category-controlled benefits, fewer fragmented records and stronger evidence when complaints arise.
+
+## Current status
+
+This repository is a working hackathon prototype, not a production airline system. Production deployment requires authoritative operational feeds, airline authorization, PSP/off-ramp agreements, KYC/KYB and AML controls, privacy governance, idempotent job processing, observability and security review.

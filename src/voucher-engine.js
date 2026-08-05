@@ -7,9 +7,9 @@ const vouchers = new Map();
 const VALID_EVENTS = ["on_time", "delayed_60", "delayed_120", "delayed_240"];
 
 const BENEFIT_RULES = {
-  meal: { label: "Meal Voucher", amount: "15.00", validFor: ["restaurant", "cafe", "airport_food"], legalBasis: "Article 27(II) of ANAC Resolution No. 400/2016" },
-  transport: { label: "Ground Transport Voucher", amount: "25.00", validFor: ["airport_transport", "taxi", "ride_hailing"], legalBasis: "Article 27(III) of ANAC Resolution No. 400/2016" },
-  hotel: { label: "Accommodation Voucher", amount: "80.00", validFor: ["hotel", "airport_hotel"], legalBasis: "Article 27(III) of ANAC Resolution No. 400/2016" },
+  meal: { label: "Meal Voucher", amount: "1.00", validFor: ["restaurant", "cafe", "airport_food"], legalBasis: "Article 27(II) of ANAC Resolution No. 400/2016" },
+  transport: { label: "Ground Transport Voucher", amount: "1.00", validFor: ["airport_transport", "taxi", "ride_hailing"], legalBasis: "Article 27(III) of ANAC Resolution No. 400/2016" },
+  hotel: { label: "Accommodation Voucher", amount: "1.00", validFor: ["hotel", "airport_hotel"], legalBasis: "Article 27(III) of ANAC Resolution No. 400/2016" },
 };
 
 function clone(value) { return structuredClone(value); }
@@ -42,8 +42,8 @@ function presentVoucher(voucher) {
     const bitReference = presented.internalReference && !/não informada/i.test(presented.internalReference) ? `BIT booking ${presented.internalReference}` : "the monitored trip";
     const pnr = presented.bookingReference && !/não informada/i.test(presented.bookingReference) ? ` and PNR ${presented.bookingReference}` : "";
     presented.notification.title = `${rule.label} issued`;
-    presented.notification.message = `${rule.label} with an illustrative face value of BRL ${faceValue.amount} issued under ${rule.legalBasis}, for flight ${presented.flightReference} and ${bitReference}${pnr}.`;
-    if (presented.settlement?.transactionHash) presented.notification.message += ` On-chain issuance proof confirmed with a ${presented.settlement.amount} ${presented.settlement.asset} Stellar Testnet microtransfer.`;
+    presented.notification.message = `${rule.label} funded with ${presented.amount} USDC Testnet under ${rule.legalBasis}, for flight ${presented.flightReference} and ${bitReference}${pnr}.`;
+    if (presented.settlement?.transactionHash) presented.notification.message += ` The full voucher value was delivered on-chain.`;
   }
   if (presented.settlement && !presented.settlement.transactionHash) presented.settlement.note = "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.";
   return presented;
@@ -114,14 +114,14 @@ function issueVoucher(session, type) {
       status: "delivered",
       deliveredAt: issuedAt,
       title: `${rule.label} issued`,
-      message: `${rule.label} with an illustrative face value of BRL ${faceValue.amount} issued under ${rule.legalBasis}, for flight ${flightReference} and ${reservationMessage}.`,
+      message: `${rule.label} funded with ${rule.amount} USDC Testnet under ${rule.legalBasis}, for flight ${flightReference} and ${reservationMessage}.`,
     },
     settlement: {
-      mode: "testnet_voucher_demo",
+      mode: "stellar_testnet_funded_voucher_pending",
       onChain: false,
       transactionHash: null,
       fundingSource: "none_demo_credit",
-      note: "Demonstration credit: no USDC was transferred. The audit hash proves record integrity, not Stellar settlement.",
+      note: "Awaiting transfer of the full voucher value from the issuer treasury.",
     },
     audit: [{ at: issuedAt, event: "voucher_issued", actor: "BIT Travels Journey Protection Engine" }],
   };
@@ -151,7 +151,7 @@ function proposeRecoveryActions(session) {
     session.ledger.push({ at: proposedAt, event: "recovery_action_proposed", actionId: action.id, type, auditHash: action.auditHash });
   };
   add(session.linkedServices?.hotel, "protect_hotel_checkin", "Protect hotel check-in", `Notify the hotel of an arrival approximately ${session.delayMinutes} minutes later and request that the booking be held.`);
-  add(session.linkedServices?.mobility, "reschedule_transfer", "Reschedule ground transfer", `Move pickup by approximately ${session.delayMinutes} minutes based on the new estimated arrival.`);
+  if (session.linkedServices?.mobility?.type === "rental_car") add(session.linkedServices.mobility, "reschedule_rental_car", "Adjust rental car pickup", `Move the rental car pickup by approximately ${session.delayMinutes} minutes based on the new estimated arrival.`);
 }
 
 function applyAnacRules(session) {
@@ -269,14 +269,97 @@ export function attachVoucherSettlement({ voucherId, settlement } = {}) {
   if (!settlement?.transactionHash) throw new Error("A Stellar transaction hash is required to settle a voucher");
   const at = settlement.submittedAt || now();
   voucher.settlement = clone(settlement);
-  voucher.notification.message += ` On-chain issuance proof confirmed with a ${settlement.amount} ${settlement.asset} Stellar Testnet microtransfer.`;
-  voucher.audit.push({ at, event: "voucher_microsettlement_confirmed", actor: "BIT Travels Airline Treasury", transactionHash: settlement.transactionHash, amount: settlement.amount, asset: settlement.asset });
+  voucher.notification.message += ` The full ${settlement.amount} ${settlement.asset} Testnet voucher value was delivered on-chain.`;
+  voucher.audit.push({ at, event: "voucher_funding_confirmed", actor: "BIT Travels Airline Treasury", transactionHash: settlement.transactionHash, amount: settlement.amount, asset: settlement.asset });
   persistVoucher(voucher);
   const session = protectionSessions.get(voucher.protectionSessionId) || findProtectionSession(voucher.protectionSessionId);
   if (session) {
     protectionSessions.set(session.sessionId, session);
     session.updatedAt = at;
-    session.ledger.push({ at, event: "voucher_microsettlement_confirmed", voucherId, transactionHash: settlement.transactionHash, amount: settlement.amount, asset: settlement.asset });
+    session.ledger.push({ at, event: "voucher_funding_confirmed", voucherId, transactionHash: settlement.transactionHash, amount: settlement.amount, asset: settlement.asset });
+    persistProtectionSession(session);
+  }
+  return clone(voucher);
+}
+
+export function attachVoucherOffRamp({ voucherId, offRamp } = {}) {
+  const voucher = vouchers.get(voucherId) || findVoucher(voucherId);
+  if (!voucher) throw Object.assign(new Error("Voucher was not found"), { statusCode: 404 });
+  vouchers.set(voucherId, voucher);
+  if (!offRamp?.orderId || !offRamp?.quoteId) throw new Error("A valid off-ramp order is required");
+  const at = offRamp.createdAt || now();
+  voucher.offRamp = clone(offRamp);
+  voucher.audit.push({ at, event: "voucher_etherfuse_offramp_created", actor: "BIT Travels Redemption Agent", provider: offRamp.provider, orderId: offRamp.orderId, quoteId: offRamp.quoteId, status: offRamp.status });
+  persistVoucher(voucher);
+  const session = protectionSessions.get(voucher.protectionSessionId) || findProtectionSession(voucher.protectionSessionId);
+  if (session) {
+    protectionSessions.set(session.sessionId, session);
+    session.updatedAt = at;
+    session.ledger.push({ at, event: "voucher_etherfuse_offramp_created", voucherId, orderId: offRamp.orderId, status: offRamp.status });
+    persistProtectionSession(session);
+  }
+  return clone(voucher);
+}
+
+export function confirmVoucherOffRampSettlement({ voucherId, settlement } = {}) {
+  const voucher = vouchers.get(voucherId) || findVoucher(voucherId);
+  if (!voucher) throw Object.assign(new Error("Voucher was not found"), { statusCode: 404 });
+  if (!voucher.offRamp?.orderId) throw Object.assign(new Error("The voucher has no Pix payment order"), { statusCode: 409 });
+  if (!settlement?.transactionHash) throw new Error("A Stellar transaction hash is required");
+  vouchers.set(voucherId, voucher);
+  const at = settlement.submittedAt || now();
+  voucher.offRamp = { ...voucher.offRamp, ...clone(settlement) };
+  voucher.audit.push({ at, event: "voucher_pix_payment_stellar_confirmed", actor: "BIT Travels Redemption Agent", orderId: voucher.offRamp.orderId, transactionHash: settlement.transactionHash, ledger: settlement.ledger });
+  persistVoucher(voucher);
+  const session = protectionSessions.get(voucher.protectionSessionId) || findProtectionSession(voucher.protectionSessionId);
+  if (session) {
+    protectionSessions.set(session.sessionId, session);
+    session.updatedAt = at;
+    session.ledger.push({ at, event: "voucher_pix_payment_stellar_confirmed", voucherId, orderId: voucher.offRamp.orderId, transactionHash: settlement.transactionHash });
+    persistProtectionSession(session);
+  }
+  return clone(voucher);
+}
+
+export function syncVoucherOffRampStatus({ voucherId, order } = {}) {
+  const voucher = vouchers.get(voucherId) || findVoucher(voucherId);
+  if (!voucher) throw Object.assign(new Error("Voucher was not found"), { statusCode: 404 });
+  if (!voucher.offRamp?.orderId) throw Object.assign(new Error("The voucher has no Pix payment order"), { statusCode: 409 });
+  if (!order?.status) throw new Error("The payment provider returned no order status");
+  vouchers.set(voucherId, voucher);
+  const providerStatus = String(order.status).toLowerCase();
+  const nextStatus = providerStatus === "completed" ? "completed" : ["funded", "processing"].includes(providerStatus) ? "processing" : ["failed", "cancelled", "expired"].includes(providerStatus) ? "failed" : voucher.offRamp.transactionHash ? "stellar_confirmed" : "awaiting_stellar_approval";
+  const previousStatus = voucher.offRamp.status;
+  const at = order.updatedAt || now();
+  voucher.offRamp = { ...voucher.offRamp, status: nextStatus, providerStatus, providerUpdatedAt: order.updatedAt || null, completedAt: order.completedAt || null, confirmedTxSignature: order.confirmedTxSignature || voucher.offRamp.transactionHash || null };
+  if (nextStatus !== previousStatus) voucher.audit.push({ at, event: "voucher_pix_payment_status_updated", actor: "BIT Travels Redemption Agent", orderId: voucher.offRamp.orderId, previousStatus, status: nextStatus, providerStatus });
+  if (nextStatus === "completed" && voucher.status !== "redeemed") {
+    voucher.status = "redeemed";
+    voucher.redeemedAt = order.completedAt || at;
+    voucher.redeemedBy = "eligible_pix_recipient";
+    voucher.pixSettlement = {
+      id: voucher.offRamp.orderId,
+      mode: "etherfuse_sandbox",
+      provider: "Payment infrastructure provider",
+      status: "paid_sandbox",
+      requestedAt: voucher.offRamp.createdAt,
+      completedAt: voucher.redeemedAt,
+      endToEndId: order.pixEndToEndId || null,
+      providerReference: voucher.offRamp.orderId,
+      quote: { sourceAmountUsdc: voucher.offRamp.sourceAmountUsdc, destinationAmountBrl: voucher.offRamp.destinationAmountBrl, exchangeRate: voucher.offRamp.exchangeRate },
+      payout: { amount: voucher.offRamp.destinationAmountBrl, currency: "BRL", rail: "PIX", environment: "sandbox" },
+      merchant: { name: "Eligible Pix recipient", category: "voucher-controlled" },
+      auditHash: createHash("sha256").update(JSON.stringify({ voucherId, orderId: voucher.offRamp.orderId, status: providerStatus, completedAt: voucher.redeemedAt })).digest("hex"),
+    };
+    voucher.audit.push({ at: voucher.redeemedAt, event: "voucher_redeemed_pix_confirmed", actor: "BIT Travels Redemption Agent", orderId: voucher.offRamp.orderId, providerStatus });
+  }
+  persistVoucher(voucher);
+  const session = protectionSessions.get(voucher.protectionSessionId) || findProtectionSession(voucher.protectionSessionId);
+  if (session) {
+    protectionSessions.set(session.sessionId, session);
+    session.updatedAt = at;
+    if (nextStatus !== previousStatus) session.ledger.push({ at, event: "voucher_pix_payment_status_updated", voucherId, orderId: voucher.offRamp.orderId, status: nextStatus });
+    if (nextStatus === "completed" && sessionVouchers(session).every((item) => item.status === "redeemed" || item.id === voucherId)) session.status = "redeemed";
     persistProtectionSession(session);
   }
   return clone(voucher);

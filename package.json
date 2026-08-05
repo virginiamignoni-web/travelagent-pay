@@ -3,7 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "An autonomous travel-planning agent that buys premium trip intelligence with MPP payments on Stellar Testnet.",
+  "description": "Passenger recovery platform with agentic HTTP 402 payments and a Stellar-to-Pix voucher off-ramp.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/virginiamignoni-web/travelagent-pay.git"
+  },
+  "keywords": [
+    "stellar",
+    "mpp",
+    "http-402",
+    "agentic-payments",
+    "usdc",
+    "off-ramp",
+    "pix",
+    "passenger-recovery"
+  ],
   "scripts": {
     "start": "node src/server.js",
     "start:stellar": "node scripts/start-stellar.js",
@@ -11,7 +25,9 @@
     "setup:agent": "node scripts/setup-agent-wallet.js",
     "settle:vouchers:testnet": "node scripts/settle-pending-vouchers.js",
     "pay": "node src/client.js",
-    "test": "node --test"
+    "test": "node --test",
+    "verify:bounty": "node scripts/verify-bounty.js",
+    "verify:bounty:online": "node scripts/verify-bounty.js --online"
   },
   "engines": {
     "node": ">=20"

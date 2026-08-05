@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 
 const FACE_VALUES = {
-  meal: { amount: "50.00", currency: "BRL" },
-  transport: { amount: "80.00", currency: "BRL" },
-  hotel: { amount: "400.00", currency: "BRL" },
+  meal: { amount: "1.00", currency: "USDC" },
+  transport: { amount: "1.00", currency: "USDC" },
+  hotel: { amount: "1.00", currency: "USDC" },
 };
 
 const MERCHANTS = {
@@ -34,12 +34,13 @@ export function createPixOffRampService({ brlPerUsdc = 5.5 } = {}) {
       if (merchantCategory !== merchant.category || !voucher.validFor.includes(merchantCategory)) throw Object.assign(new Error("Merchant category is not eligible for this voucher"), { statusCode: 403 });
       const faceValue = voucher.faceValue || faceValueForVoucher(voucher.type);
       const requestedAt = new Date().toISOString();
-      const usdcQuoted = (Number(faceValue.amount) / brlPerUsdc).toFixed(2);
+      const usdcQuoted = Number(voucher.amount || faceValue.amount).toFixed(2);
+      const brlPayout = (Number(usdcQuoted) * brlPerUsdc).toFixed(2);
       const record = {
         id: randomUUID(), mode: "pix_offramp_sandbox", provider: "BIT Travels Pix Off-ramp Simulator", status: "paid_sandbox",
         requestedAt, completedAt: requestedAt, endToEndId: pixEndToEndId(new Date(requestedAt)),
-        merchant, payout: { amount: faceValue.amount, currency: "BRL", rail: "PIX", sandbox: true },
-        quote: { brlPerUsdc: brlPerUsdc.toFixed(4), sourceAmountUsdc: usdcQuoted, destinationAmountBrl: faceValue.amount, expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() },
+        merchant, payout: { amount: brlPayout, currency: "BRL", rail: "PIX", sandbox: true },
+        quote: { brlPerUsdc: brlPerUsdc.toFixed(4), sourceAmountUsdc: usdcQuoted, destinationAmountBrl: brlPayout, expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() },
         note: "Pix payout simulated in sandbox. No BRL moved. Stellar Testnet issuance proof remains independently verifiable.",
       };
       record.auditHash = createHash("sha256").update(JSON.stringify(record)).digest("hex");

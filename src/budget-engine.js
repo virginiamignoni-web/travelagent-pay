@@ -23,7 +23,7 @@ function flightCostBrl(flight, travelers) {
   return { amount: money(flight.amount * rate), estimated: false, source: `${flight.airline} sandbox offer` };
 }
 
-function scenario({ tierId, mobilityMode, flight, travelers, days, budgetBrl }) {
+function scenario({ tierId, mobilityMode, flight, travelers, days, budgetUsdc }) {
   const tier = TIERS[tierId];
   const nights = Math.max(1, days - 1);
   const rooms = Math.max(1, Math.ceil(travelers / 2));
@@ -35,6 +35,8 @@ function scenario({ tierId, mobilityMode, flight, travelers, days, budgetBrl }) 
   const subtotalBrl = money(flightPart.amount + accommodationBrl + foodBrl + localActivitiesBrl + mobilityBrl);
   const emergencyReserveBrl = money(subtotalBrl * 0.1);
   const totalBrl = money(subtotalBrl + emergencyReserveBrl);
+  const budgetBrl = money(budgetUsdc * FX_TO_BRL.USD);
+  const toUsdc = (value) => money(value / FX_TO_BRL.USD);
   return {
     tier: tierId,
     tierLabel: tier.label,
@@ -42,7 +44,11 @@ function scenario({ tierId, mobilityMode, flight, travelers, days, budgetBrl }) 
     mobilityLabel: mobilityMode.label,
     withinCommuteLimit: mobilityMode.withinLimit,
     breakdown: { flightBrl: flightPart.amount, accommodationBrl, foodBrl, mobilityBrl, localActivitiesBrl, emergencyReserveBrl },
+    breakdownUsdc: { flight: toUsdc(flightPart.amount), accommodation: toUsdc(accommodationBrl), food: toUsdc(foodBrl), mobility: toUsdc(mobilityBrl), localActivities: toUsdc(localActivitiesBrl), emergencyReserve: toUsdc(emergencyReserveBrl) },
     totalBrl,
+    totalUsdc: toUsdc(totalBrl),
+    budgetUsdc,
+    differenceUsdc: money(budgetUsdc - toUsdc(totalBrl)),
     budgetBrl,
     differenceBrl: money(budgetBrl - totalBrl),
     fits: totalBrl <= budgetBrl && mobilityMode.withinLimit,
@@ -52,7 +58,7 @@ function scenario({ tierId, mobilityMode, flight, travelers, days, budgetBrl }) 
 }
 
 export function buildCompleteBudget({ input = {}, primaryFlight = null, mobility } = {}) {
-  const budgetBrl = Math.max(300, Number(input.budget) || 2500);
+  const budgetUsdc = Math.max(100, Number(input.budget) || 500);
   const travelers = Math.max(1, Number(input.travelers) || 1);
   const days = Math.max(1, Number(input.days) || 5);
   const selectedTier = requestedTier(input.travelStyle);
@@ -63,9 +69,9 @@ export function buildCompleteBudget({ input = {}, primaryFlight = null, mobility
 
   if (!selectedMode) return { status: "incomplete", alerts: [{ level: "warning", message: "Mobility data is unavailable, so the complete budget cannot be validated." }] };
 
-  const requested = scenario({ tierId: selectedTier, mobilityMode: selectedMode, flight: primaryFlight, travelers, days, budgetBrl });
+  const requested = scenario({ tierId: selectedTier, mobilityMode: selectedMode, flight: primaryFlight, travelers, days, budgetUsdc });
   const scenarios = Object.keys(TIERS).flatMap((tierId) => modes.map((mode) =>
-    scenario({ tierId, mobilityMode: mode, flight: primaryFlight, travelers, days, budgetBrl })
+    scenario({ tierId, mobilityMode: mode, flight: primaryFlight, travelers, days, budgetUsdc })
   ));
   const feasible = scenarios.filter((item) => item.fits).sort((a, b) => {
     const tierOrder = { economy: 1, balanced: 2, comfort: 3 };
@@ -86,17 +92,17 @@ export function buildCompleteBudget({ input = {}, primaryFlight = null, mobility
     });
   }
 
-  if (requested.totalBrl > budgetBrl) {
+  if (requested.totalUsdc > budgetUsdc) {
     const tierFit = feasible.find((item) => item.mobilityMode === selectedMode.id);
     const transportFit = feasible.find((item) => item.tier === selectedTier);
     alerts.push({
       level: "critical",
       code: "over_budget",
-      message: `The requested plan is R$ ${Math.abs(requested.differenceBrl).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} over budget.`,
+      message: `The requested plan is ${Math.abs(requested.differenceUsdc).toFixed(2)} USDC over budget.`,
       action: tierFit
-        ? `Adjust to the ${tierFit.tierLabel} tier and save R$ ${money(requested.totalBrl - tierFit.totalBrl).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.`
+        ? `Adjust to the ${tierFit.tierLabel} tier and save ${money(requested.totalUsdc - tierFit.totalUsdc).toFixed(2)} USDC.`
         : transportFit
-          ? `Switch to ${transportFit.mobilityLabel} and save R$ ${money(requested.totalBrl - transportFit.totalBrl).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.`
+          ? `Switch to ${transportFit.mobilityLabel} and save ${money(requested.totalUsdc - transportFit.totalUsdc).toFixed(2)} USDC.`
           : bestFit
             ? `Use the ${bestFit.tierLabel} tier with ${bestFit.mobilityLabel}.`
             : "No current tier and transport combination fits. Increase the budget, shorten the stay, or change flight dates.",
@@ -105,7 +111,7 @@ export function buildCompleteBudget({ input = {}, primaryFlight = null, mobility
 
   if (requested.flightEstimated) alerts.push({ level: "warning", code: "flight_estimate", message: "Flight cost uses a route placeholder because no sandbox offer was available.", action: "Refresh the flight search before booking." });
   if (!primaryFlight) alerts.push({ level: "warning", code: "incomplete_live_data", message: "Budget confidence is partial until a flight offer is returned.", action: "Treat the result as a planning ceiling, not a quote." });
-  if (requested.fits) alerts.push({ level: "success", code: "budget_fit", message: `The requested ${requested.tierLabel} plan fits with R$ ${requested.differenceBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} remaining.`, action: "Keep the emergency reserve intact before confirming suppliers." });
+  if (requested.fits) alerts.push({ level: "success", code: "budget_fit", message: `The requested ${requested.tierLabel} plan fits with ${requested.differenceUsdc.toFixed(2)} USDC remaining.`, action: "Keep the emergency reserve intact before confirming suppliers." });
 
   return {
     status: requested.fits ? "fits" : bestFit ? "adjustment_available" : "not_feasible",
@@ -116,8 +122,7 @@ export function buildCompleteBudget({ input = {}, primaryFlight = null, mobility
       hotel: "Tier estimate per room/night; live Duffel Stays rates pending",
       occupancy: `${Math.max(1, Math.ceil(travelers / 2))} room(s), up to two travelers per room`,
       reserve: "10% emergency reserve",
-      fx: "Planning rates: USD 5.50, EUR 6.20, GBP 7.20 in BRL",
+      fx: "All supplier currencies are converted to an indicative USDC planning value; the final quote is refreshed before issuance",
     },
   };
 }
-

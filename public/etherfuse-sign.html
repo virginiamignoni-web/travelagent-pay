@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BIT Travels · Etherfuse Testnet Approval</title>
+  <style>
+    :root{font-family:Poppins,Arial,sans-serif;color:#003366;background:#eef3f7}body{margin:0;min-height:100vh;display:grid;place-items:center}.card{width:min(680px,calc(100% - 40px));padding:34px;border-radius:24px;background:#fff;box-shadow:0 22px 60px #00336622}.eyebrow{color:#a66f00;font-size:12px;font-weight:800;letter-spacing:1.5px}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:24px 0}.summary div{padding:15px;border:1px solid #e5e7eb;border-radius:12px}.summary small{display:block;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase}.summary b{display:block;margin-top:6px;overflow-wrap:anywhere}button{width:100%;padding:16px;border:0;border-radius:12px;background:#fdb913;color:#003366;font-weight:900;cursor:pointer}button:disabled{opacity:.55;cursor:wait}#status{margin-top:16px;padding:14px;border-radius:12px;background:#f4f7fa;line-height:1.5}.ok{background:#e8fff6!important;color:#075e45}.error{background:#fff0f0!important;color:#8b1a1a}a{color:inherit}@media(max-width:560px){.summary{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="eyebrow">BIT TRAVELS · ETHERFUSE SANDBOX</div>
+    <h1>Approve the Pix off-ramp payment</h1>
+    <p>This sends Testnet USDC to the Etherfuse Stellar anchor. No real BRL or Pix will move.</p>
+    <section class="summary">
+      <div><small>Network</small><b>Stellar Testnet</b></div>
+      <div><small>Amount</small><b>1.00 USDC</b></div>
+      <div><small>Expected sandbox payout</small><b>BRL 5.13471</b></div>
+      <div><small>Order</small><b>aa8a196a-7b63-41b2-aaae-6e26b6b374e3</b></div>
+    </section>
+    <button id="approve" type="button">Open Freighter and approve 1 USDC Testnet</button>
+    <div id="status">Ready for your explicit Freighter approval.</div>
+  </main>
+  <script src="/vendor/freighter-api.js"></script>
+  <script>
+    const button = document.querySelector("#approve");
+    const status = document.querySelector("#status");
+    const xdr = new URLSearchParams(location.search).get("xdr");
+    const expectedAddress = "GC5CXZYFN2KDDZS6QKDUUSVU3GSJVLOWOTVUGNW2RZFR4CFJFWXQCAOE";
+    const networkPassphrase = "Test SDF Network ; September 2015";
+
+    function setStatus(message, kind = "") { status.textContent = message; status.className = kind; }
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        if (!xdr) throw new Error("Unsigned transaction is missing");
+        const api = window.freighterApi;
+        if (!api) throw new Error("Freighter extension was not detected");
+        const access = await api.requestAccess();
+        if (access.error || access.address !== expectedAddress) throw new Error(access.error || "Open the expected BIT Travels Testnet wallet in Freighter");
+        const network = await api.getNetwork();
+        if (network.error || network.network !== "TESTNET") throw new Error(network.error || "Switch Freighter to TESTNET");
+        setStatus("Waiting for approval in Freighter…");
+        const signed = await api.signTransaction(xdr, { networkPassphrase, address: expectedAddress });
+        if (signed.error || !signed.signedTxXdr) throw new Error(signed.error || "Transaction was not signed");
+        setStatus("Signature approved. Submitting to Stellar Testnet…");
+        const response = await fetch("https://horizon-testnet.stellar.org/transactions", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ tx: signed.signedTxXdr }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || result.title || "Stellar submission failed");
+        setStatus(`Confirmed on Stellar Testnet · ${result.hash}`, "ok");
+        button.hidden = true;
+      } catch (error) {
+        setStatus(error.message, "error");
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

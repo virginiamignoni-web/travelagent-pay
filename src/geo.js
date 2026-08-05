@@ -48,7 +48,7 @@ export async function geocodeEvent(address, radiusKm = 5) {
   const key = normalized(query);
   if (cache.has(key)) return buildProtectionZone(cache.get(key), radiusKm);
 
-  const known = KNOWN_PLACES.find((place) => place.match.every((term) => key.includes(term)));
+  const known = KNOWN_PLACES.find((place) => place.match.some((term) => key.includes(term)));
   if (known) {
     const { match, ...place } = known;
     cache.set(key, place);

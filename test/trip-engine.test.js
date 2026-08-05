@@ -9,12 +9,138 @@ import { assessOperationalRisk } from "../src/risk-engine.js";
 import { buildContingencyPlan } from "../src/contingency-engine.js";
 import { buildDemoHotels, searchNearbyHotels } from "../src/hotels.js";
 import { createApprovalSession, decideApprovalAction } from "../src/approval-engine.js";
-import { createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
-import { attachVoucherSettlement, createProtectionSession, decideRecoveryAction, getProtectionSession, recordProtectionEvent, recordProtectionReport, redeemVoucher } from "../src/voucher-engine.js";
+import { confirmReservationPayment, createReservation, getReservation, listReservations, saveReservation } from "../src/reservation-engine.js";
+import { attachVoucherOffRamp, attachVoucherSettlement, confirmVoucherOffRampSettlement, createProtectionSession, decideRecoveryAction, getProtectionSession, recordProtectionEvent, recordProtectionReport, redeemVoucher, syncVoucherOffRampStatus } from "../src/voucher-engine.js";
 import { summarizeFlightVerification, verifyFlightStatus } from "../src/aviationstack.js";
 import { findProtectionSession, findVoucher, findVouchers } from "../src/database.js";
 import { buildDemoFlightOffers, createDuffelOrder, summarizeOffer } from "../src/duffel.js";
 import { createPixOffRampService, sandboxMerchantForVoucher } from "../src/pix-offramp.js";
+import { createEtherfuseClient } from "../src/etherfuse.js";
+import { createEtherfuseStellarService } from "../src/etherfuse-stellar.js";
+import { Account, Asset, BASE_FEE, Keypair, Memo, Networks, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
+import { extractEventDetails, inferEventTimeZone, inspectEventWebsite } from "../src/event-inspector.js";
+
+test("extracts official event details from schema.org data and infers Lisbon time", () => {
+  const html = `<script type="application/ld+json">{"@context":"https://schema.org","@type":"Event","name":"Stellar Meridian","startDate":"2026-09-17T09:00:00+01:00","location":{"@type":"Place","name":"Convento do Beato","address":{"streetAddress":"Alameda do Beato","addressLocality":"Lisboa","postalCode":"1950-042","addressCountry":"Portugal"}}}</script>`;
+  const result = extractEventDetails(html, "https://example.com/event");
+  assert.equal(result.name, "Stellar Meridian");
+  assert.equal(result.venue, "Convento do Beato");
+  assert.match(result.address, /Lisboa/);
+  assert.equal(result.timeZone, "Europe/Lisbon");
+  assert.equal(result.requiresConfirmation, true);
+});
+
+test("extracts the Meridian date range and venue from official page text", () => {
+  const html = `<html><head><meta property="og:title" content="Meridian 2026 - Meridian 2026"></head><body><div>October 28-29.2026 · Convento do Beato, Lisbon, Portugal</div><h1>Two days of insights</h1></body></html>`;
+  const result = extractEventDetails(html, "https://meridian.stellar.org/");
+  assert.equal(result.name, "Meridian 2026");
+  assert.equal(result.startDate, "2026-10-28");
+  assert.equal(result.endDate, "2026-10-29");
+  assert.equal(result.dateHasTime, false);
+  assert.match(result.address, /Convento do Beato/);
+  assert.equal(result.timeZone, "Europe/Lisbon");
+  assert.equal(result.source, "official page content");
+});
+
+test("blocks private event website addresses", async () => {
+  await assert.rejects(() => inspectEventWebsite("http://127.0.0.1/event"), /cannot be accessed|private network/);
+  assert.equal(inferEventTimeZone("São Paulo, Brazil"), "America/Sao_Paulo");
+});
+
+test("blocks an event website redirect to a private network", async () => {
+  const fetchImpl = async () => new Response(null, { status: 302, headers: { location: "http://127.0.0.1/private" } });
+  const resolveHost = async () => [{ address: "93.184.216.34" }];
+  await assert.rejects(() => inspectEventWebsite("https://example.com/event", { fetchImpl, resolveHost }), /cannot be accessed|private network/);
+});
+
+test("creates an Etherfuse quote and anchor order with the documented payloads", async () => {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options, body: JSON.parse(options.body) });
+    return new Response(JSON.stringify(url.endsWith("/quote")
+      ? { quoteId: "quote-1", sourceAmount: "1", destinationAmount: "5.13", exchangeRate: "5.13", feeBps: "20" }
+      : { offramp: { orderId: "order-1", withdrawAnchorAccount: "GANCHOR", withdrawMemo: "memo", withdrawMemoType: "hash" } }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const client = createEtherfuseClient({ apiKey: "sandbox-key" });
+    await client.createQuote({ quoteId: "quote-1", customerId: "customer-1", blockchain: "stellar", quoteAssets: { type: "offramp", sourceAsset: "USDC:GISSUER", targetAsset: "BRL" }, sourceAmount: "1" });
+    await client.createOrder({ orderId: "order-1", bankAccountId: "bank-1", cryptoWalletId: "wallet-1", quoteId: "quote-1", useAnchor: true });
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].body.quoteAssets.type, "offramp");
+    assert.equal(calls[1].body.useAnchor, true);
+    assert.equal(calls[1].body.cryptoWalletId, "wallet-1");
+    assert.equal(calls[0].options.headers.Authorization, "sandbox-key");
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("persists an awaiting-approval Etherfuse order on its voucher", () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air", flightNumber: "BT402" } });
+  const voucher = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
+  const updated = attachVoucherOffRamp({ voucherId: voucher.id, offRamp: { provider: "Etherfuse", quoteId: "quote-1", orderId: "order-1", status: "awaiting_stellar_approval", createdAt: new Date().toISOString() } });
+  assert.equal(updated.offRamp.orderId, "order-1");
+  assert.equal(findVoucher(voucher.id).offRamp.status, "awaiting_stellar_approval");
+  assert.ok(updated.audit.some((entry) => entry.event === "voucher_etherfuse_offramp_created"));
+});
+
+test("builds, validates, submits, and persists the Pix payment Stellar transaction", async () => {
+  const wallet = Keypair.random();
+  const anchor = Keypair.random().publicKey();
+  const memo = Buffer.alloc(32, 7).toString("base64");
+  const horizon = { loadAccount: async () => new Account(wallet.publicKey(), "123"), submitTransaction: async () => ({ hash: "stellar-hash", ledger: 456 }) };
+  const service = createEtherfuseStellarService({ horizon });
+  const offRamp = { provider: "Etherfuse", quoteId: "quote-2", orderId: "order-2", status: "awaiting_stellar_approval", sourceAmountUsdc: "1", anchor: { account: anchor, memo, memoType: "hash" } };
+  const built = await service.build({ sourceAddress: wallet.publicKey(), offRamp });
+  const transaction = TransactionBuilder.fromXDR(built.unsignedXdr, Networks.TESTNET);
+  transaction.sign(wallet);
+  const settlement = await service.submit({ signedXdr: transaction.toXDR(), sourceAddress: wallet.publicKey(), offRamp });
+  assert.equal(settlement.transactionHash, "stellar-hash");
+  assert.equal(settlement.ledger, 456);
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air", flightNumber: "BTPIX" } });
+  const voucher = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
+  attachVoucherOffRamp({ voucherId: voucher.id, offRamp });
+  const updated = confirmVoucherOffRampSettlement({ voucherId: voucher.id, settlement });
+  assert.equal(updated.offRamp.status, "stellar_confirmed");
+  assert.equal(updated.offRamp.transactionHash, "stellar-hash");
+});
+
+test("rejects a Pix payment transaction with a different anchor memo", async () => {
+  const wallet = Keypair.random();
+  const anchor = Keypair.random().publicKey();
+  const memo = Buffer.alloc(32, 7).toString("base64");
+  const horizon = { loadAccount: async () => new Account(wallet.publicKey(), "123"), submitTransaction: async () => ({ hash: "must-not-submit", ledger: 0 }) };
+  const service = createEtherfuseStellarService({ horizon });
+  const offRamp = { sourceAmountUsdc: "1", anchor: { account: anchor, memo, memoType: "hash" } };
+  const transaction = new TransactionBuilder(new Account(wallet.publicKey(), "123"), { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
+    .addMemo(Memo.hash(Buffer.alloc(32, 8)))
+    .addOperation(Operation.payment({ destination: anchor, asset: new Asset("USDC", "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"), amount: "1.0000000" }))
+    .setTimeout(60)
+    .build();
+  transaction.sign(wallet);
+  await assert.rejects(() => service.submit({ signedXdr: transaction.toXDR(), sourceAddress: wallet.publicKey(), offRamp }), /memo does not match/);
+});
+
+test("keeps Pix pending until the provider explicitly completes the order", () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air", flightNumber: "BTPENDING" } });
+  const voucher = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
+  attachVoucherOffRamp({ voucherId: voucher.id, offRamp: { provider: "Etherfuse", quoteId: "quote-p", orderId: "order-p", status: "awaiting_stellar_approval", sourceAmountUsdc: "1", destinationAmountBrl: "5.13", createdAt: new Date().toISOString() } });
+  confirmVoucherOffRampSettlement({ voucherId: voucher.id, settlement: { status: "stellar_confirmed", transactionHash: "hash-p", ledger: 10, submittedAt: new Date().toISOString() } });
+  const pending = syncVoucherOffRampStatus({ voucherId: voucher.id, order: { orderId: "order-p", status: "created", updatedAt: new Date().toISOString() } });
+  assert.equal(pending.status, "issued");
+  assert.equal(pending.offRamp.status, "stellar_confirmed");
+  assert.equal(pending.pixSettlement, undefined);
+});
+
+test("marks the voucher redeemed only after confirmed Pix completion", () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air", flightNumber: "BTPAID" } });
+  const voucher = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
+  attachVoucherOffRamp({ voucherId: voucher.id, offRamp: { provider: "Etherfuse", quoteId: "quote-c", orderId: "order-c", status: "processing", sourceAmountUsdc: "1", destinationAmountBrl: "5.13", exchangeRate: "5.13", createdAt: new Date().toISOString() } });
+  const completed = syncVoucherOffRampStatus({ voucherId: voucher.id, order: { orderId: "order-c", status: "completed", completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } });
+  assert.equal(completed.status, "redeemed");
+  assert.equal(completed.offRamp.status, "completed");
+  assert.equal(completed.pixSettlement.status, "paid_sandbox");
+  assert.equal(completed.pixSettlement.providerReference, "order-c");
+});
 
 test("normalizes supported destinations", () => {
   assert.equal(normalizeDestination("São Paulo"), "sao-paulo");
@@ -84,13 +210,13 @@ test("allocates the entire budget and returns one itinerary entry per day", () =
 test("builds a complete budget and warns with a fitting tier adjustment", () => {
   const mobility = compareMobility({ radiusKm: 5, maxCommuteMinutes: 30, travelers: 1, days: 5, preferredMode: "rental_car" });
   const result = buildCompleteBudget({
-    input: { budget: 8000, travelers: 1, days: 5, travelStyle: "Comfort", transportPreference: "rental_car" },
+    input: { budget: 1600, budgetCurrency: "USDC", travelers: 1, days: 5, travelStyle: "Comfort", transportPreference: "rental_car" },
     primaryFlight: { airline: "Test Air", amount: 500, currency: "USD" },
     mobility,
   });
   assert.equal(result.status, "adjustment_available");
   assert.ok(result.alerts.some((alert) => alert.code === "over_budget"));
-  assert.ok(result.recommended.totalBrl <= 8000);
+  assert.ok(result.recommended.totalUsdc <= 1600);
 });
 
 test("reports when no tier and transport combination fits", () => {
@@ -214,9 +340,10 @@ test("issues a testnet meal voucher when a flight reaches 120 minutes of delay",
   });
   const delayed = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });
   assert.equal(delayed.status, "assistance_issued");
-  assert.equal(delayed.voucher.amount, "15.00");
+  assert.equal(delayed.voucher.amount, "1.00");
   assert.equal(delayed.voucher.asset, "USDC");
-  assert.deepEqual(delayed.voucher.faceValue, { amount: "50.00", currency: "BRL" });
+  assert.deepEqual(delayed.voucher.faceValue, { amount: "1.00", currency: "USDC" });
+  assert.equal(delayed.voucher.amount, "1.00");
   assert.equal(delayed.voucher.network, "stellar:testnet");
   assert.equal(delayed.voucher.status, "issued");
   assert.equal(findProtectionSession(session.sessionId).delayMinutes, 120);
@@ -305,9 +432,9 @@ test("applies the progressive ANAC assistance thresholds", () => {
   assert.deepEqual(fourHours.entitlementOptions, ["reaccommodation", "full_refund", "alternative_transport"]);
 });
 
-test("proposes auditable hotel and transfer recovery after a confirmed delay", () => {
+test("proposes auditable hotel and rental car recovery only when a car is linked", () => {
   const session = createProtectionSession({
-    input: { linkedServices: { hotel: { id: "hotel-1", name: "Hotel Lisboa" }, mobility: { id: "transfer-1", name: "Traslado privado" } } },
+    input: { linkedServices: { hotel: { id: "hotel-1", name: "Hotel Lisboa" }, mobility: { id: "car-1", type: "rental_car", name: "Rental car" } } },
     primaryFlight: { airline: "TAP", flightNumber: "TP88" },
   });
   const delayed = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120", verification: { verified: true, delayMinutes: 120, source: "test" } });
@@ -316,6 +443,13 @@ test("proposes auditable hotel and transfer recovery after a confirmed delay", (
   const decided = decideRecoveryAction({ sessionId: session.sessionId, actionId: delayed.recoveryActions[0].id, decision: "authorized" });
   assert.equal(decided.recoveryActions[0].status, "authorized_testnet");
   assert.equal(decided.recoveryActions[0].execution.supplierChanged, false);
+});
+
+test("does not propose rental car recovery for public transport", () => {
+  const session = createProtectionSession({ input: { linkedServices: { hotel: { id: "hotel-2", name: "Hotel Lisboa" }, mobility: null } }, primaryFlight: { airline: "TAP", flightNumber: "TP88" } });
+  const delayed = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120", verification: { verified: true, delayMinutes: 120, source: "test" } });
+  assert.equal(delayed.recoveryActions.length, 1);
+  assert.equal(delayed.recoveryActions[0].type, "protect_hotel_checkin");
 });
 
 test("does not issue hotel when the passenger is in their home city", () => {
@@ -351,30 +485,31 @@ test("links every voucher to an auditable receipt and passenger notification", (
   assert.equal(voucher.notification.status, "delivered");
 });
 
-test("attaches a confirmed Stellar microsettlement to the voucher audit trail", () => {
+test("attaches a fully funded Stellar voucher settlement to the audit trail", () => {
   const session = createProtectionSession({ input: { travelerWallet: "GTEST" }, primaryFlight: { airline: "Demo Air", flightNumber: "BT101" } });
   const issued = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
   const transactionHash = "a".repeat(64);
-  attachVoucherSettlement({ voucherId: issued.id, settlement: { mode: "stellar_testnet_microsettlement", onChain: true, transactionHash, amount: "0.01", asset: "USDC", network: "stellar:testnet", submittedAt: "2026-08-04T22:03:16Z", explorerUrl: `https://stellar.expert/explorer/testnet/tx/${transactionHash}` } });
+  attachVoucherSettlement({ voucherId: issued.id, settlement: { mode: "stellar_testnet_funded_voucher", onChain: true, transactionHash, amount: "1.00", asset: "USDC", network: "stellar:testnet", submittedAt: "2026-08-04T22:03:16Z", explorerUrl: `https://stellar.expert/explorer/testnet/tx/${transactionHash}` } });
   const settled = getProtectionSession(session.sessionId).voucher;
   assert.equal(settled.settlement.onChain, true);
-  assert.equal(settled.settlement.amount, "0.01");
+  assert.equal(settled.settlement.amount, "1.00");
   assert.equal(settled.settlement.transactionHash, transactionHash);
-  assert.match(settled.notification.message, /On-chain issuance proof confirmed/);
-  assert.ok(getProtectionSession(session.sessionId).ledger.some((entry) => entry.event === "voucher_microsettlement_confirmed"));
+  assert.match(settled.notification.message, /full voucher value was delivered on-chain/);
+  assert.ok(getProtectionSession(session.sessionId).ledger.some((entry) => entry.event === "voucher_funding_confirmed"));
 });
 
 test("creates an auditable sandbox reservation only after explicit selection", () => {
   const reservation = createReservation({
     input: { destination: "Lisboa" },
-    selections: { flightId: "offer-1", hotelId: "hotel-1", mobilityMode: "public_transport" },
+    selections: { flightId: "off_offer_1", hotelId: "hotel-1", mobilityMode: "public_transport" },
     plan: {
-      flightSearch: { offers: [{ id: "offer-1", airline: "Test Air" }] },
+      flightSearch: { offers: [{ id: "off_offer_1", airline: "Test Air", amount: 321, currency: "EUR" }] },
       hotelSearch: { hotels: [{ id: "hotel-1", name: "Hotel Test" }] },
       mobility: { modes: [{ id: "public_transport", label: "Public transport" }] },
     },
   });
-  assert.equal(reservation.status, "confirmed_sandbox");
+  assert.equal(reservation.status, "awaiting_payment");
+  assert.equal(reservation.checkout.status, "awaiting_payment");
   assert.equal(reservation.supplierExecution.charged, false);
   assert.match(reservation.bookingReference, /^BIT[A-F0-9]{6}$/);
   assert.equal(reservation.internalReference, reservation.bookingReference);
@@ -385,6 +520,28 @@ test("creates an auditable sandbox reservation only after explicit selection", (
   const listed = listReservations({ travelerWallet: "GTEST-MY-TRIPS" });
   assert.equal(listed.length, 1);
   assert.equal(listed[0].trip.destination, "Lisboa");
+});
+
+test("requires explicit booking payment before supplier issuance state", () => {
+  const reservation = createReservation({
+    input: { destination: "Lisboa" },
+    selections: { flightId: "off_checkout", mobilityMode: "public_transport" },
+    plan: { flightSearch: { offers: [{ id: "off_checkout", airline: "Test Air", amount: 450, currency: "EUR" }] }, mobility: { modes: [{ id: "public_transport", label: "Public transport" }] } },
+  });
+  assert.throws(() => confirmReservationPayment({ reservationId: reservation.reservationId }), /Explicit payment confirmation/);
+  assert.throws(() => confirmReservationPayment({ reservationId: reservation.reservationId, acceptedPaymentTerms: true }), /confirmed Stellar Testnet/);
+  const settlement = { status: "paid_testnet", transactionHash: "a".repeat(64), amount: "0.10", asset: "USDC", ledger: 123, submittedAt: "2026-08-05T12:00:00Z" };
+  const paid = confirmReservationPayment({ reservationId: reservation.reservationId, acceptedPaymentTerms: true, settlement });
+  assert.equal(paid.status, "payment_confirmed_testnet");
+  assert.equal(paid.checkout.status, "paid_testnet");
+  assert.equal(paid.checkout.commercialValue.amount, "507.27");
+  assert.equal(paid.checkout.commercialValue.currency, "USDC");
+  assert.equal(paid.checkout.commercialValue.estimatedUsdc, "507.27");
+  assert.equal(paid.checkout.commercialValue.components.flight.supplierAmount, "450.00");
+  assert.equal(paid.checkout.commercialValue.components.flight.supplierCurrency, "EUR");
+  assert.equal(paid.supplierExecution.customerPaymentRecorded, true);
+  assert.equal(paid.supplierReferences.pnr, null);
+  assert.equal(paid.checkout.settlement.transactionHash.length, 64);
 });
 
 test("creates a Duffel test order from a refreshed offer", async () => {

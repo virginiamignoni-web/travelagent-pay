@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.0",
+  "project": {
+    "name": "BIT Travels Passenger Recovery Platform",
+    "repository": "https://github.com/virginiamignoni-web/travelagent-pay",
+    "summary": "Event-driven passenger recovery with agentic HTTP 402 payments and a Stellar-to-Pix voucher off-ramp.",
+    "license": "Proprietary hackathon submission; see ORIGINALITY.md",
+    "environments": ["Stellar Testnet", "Duffel Developer Test", "Etherfuse Sandbox"]
+  },
+  "submissions": {
+    "agenticPayments": {
+      "lane": "Payments and Agent Tooling",
+      "protocol": "HTTP 402 / MPP Charge",
+      "network": "stellar:testnet",
+      "asset": "USDC",
+      "amount": "0.01",
+      "requestEndpoint": "POST /api/premium-trip-plan",
+      "entrypoints": ["src/payment.js", "src/client.js", "src/server.js"],
+      "tests": ["test/payment.test.js", "test/bounty-flow.test.js"],
+      "liveProof": {
+        "transactionHash": "bbcafe74b523e7c241c94eb680846ce63a3092cb7440fd0f0127f7d5a5c519a2",
+        "explorerUrl": "https://stellar.expert/explorer/testnet/tx/bbcafe74b523e7c241c94eb680846ce63a3092cb7440fd0f0127f7d5a5c519a2",
+        "evidenceFile": "LIVE_TESTNET_PROOF.md"
+      },
+      "bookingProof": {
+        "bitReference": "BITAB3A80",
+        "amount": "0.10 USDC",
+        "transactionHash": "9a76ba7e3805074f7ea428ebb538808063dd8f3fb213847a32a675691d055317",
+        "explorerUrl": "https://stellar.expert/explorer/testnet/tx/9a76ba7e3805074f7ea428ebb538808063dd8f3fb213847a32a675691d055317"
+      }
+    },
+    "passengerVoucherOffRamp": {
+      "sourceAsset": "USDC",
+      "sourceNetwork": "stellar:testnet",
+      "destinationCurrency": "BRL",
+      "destinationRail": "PIX",
+      "provider": "Etherfuse",
+      "providerEnvironment": "sandbox",
+      "wallet": "Freighter non-custodial signing",
+      "entrypoints": ["src/voucher-engine.js", "src/stellar-voucher-settlement.js", "src/etherfuse.js", "src/etherfuse-stellar.js"],
+      "tests": ["test/trip-engine.test.js", "test/bounty-flow.test.js"],
+      "disclosure": "The integration proves the sandbox quote, order, Stellar approval and status lifecycle; it does not claim production BRL settlement.",
+      "voucherFundingProof": {
+        "bitReference": "BITAB3A80",
+        "amount": "1.00 USDC",
+        "transactionHash": "f59dcae4eec7c9c58361f09f0f16e41b2ab5f350ebfa5e2e711c05fb945fcb86",
+        "explorerUrl": "https://stellar.expert/explorer/testnet/tx/f59dcae4eec7c9c58361f09f0f16e41b2ab5f350ebfa5e2e711c05fb945fcb86"
+      },
+      "offRampAnchorProof": {
+        "bitReference": "BITAB3A80",
+        "amount": "1.00 USDC",
+        "providerStatus": "funded",
+        "transactionHash": "950528b23b743e776616c6bbf3161493f256d60acb4632a688bd29d10a0aec6e",
+        "explorerUrl": "https://stellar.expert/explorer/testnet/tx/950528b23b743e776616c6bbf3161493f256d60acb4632a688bd29d10a0aec6e"
+      }
+    }
+  },
+  "verification": {
+    "command": "pnpm verify:bounty",
+    "onlineCommand": "pnpm verify:bounty:online",
+    "evidenceMap": "BOUNTY_EVIDENCE.md",
+    "architecture": "ARCHITECTURE.md",
+    "demoRunbook": "DEMO.md"
+  }
+}
