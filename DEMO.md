@@ -1,5 +1,9 @@
 # Demo runbook
 
+Public rehearsal deployment: https://bit-travels-concierge.onrender.com
+
+The free Render instance can take approximately 50 seconds to wake after inactivity. Its filesystem is ephemeral across restarts and deploys.
+
 ## 1. Safe local rehearsal
 
 ```bash

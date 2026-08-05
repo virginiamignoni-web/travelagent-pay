@@ -9,6 +9,10 @@ BIT Travels combines an AI travel concierge with an event-driven passenger recov
 
 The passenger sees planning, bookings, active trips, protection and a voucher wallet. Airlines, insurers and ground handlers gain a programmable assistance workflow and an auditable event record.
 
+**Public demo:** https://bit-travels-concierge.onrender.com
+
+The public deployment runs in the clearly labeled local rehearsal mode and intentionally contains no supplier or wallet secrets. Verifiable Testnet executions are documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
+
 ## Judge in 60 seconds
 
 | Claim | Implementation | Automated evidence | External proof |

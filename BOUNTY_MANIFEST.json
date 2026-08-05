@@ -3,6 +3,7 @@
   "project": {
     "name": "BIT Travels Passenger Recovery Platform",
     "repository": "https://github.com/virginiamignoni-web/travelagent-pay",
+    "publicDemo": "https://bit-travels-concierge.onrender.com",
     "summary": "Event-driven passenger recovery with agentic HTTP 402 payments and a Stellar-to-Pix voucher off-ramp.",
     "license": "Proprietary hackathon submission; see ORIGINALITY.md",
     "environments": ["Stellar Testnet", "Duffel Developer Test", "Etherfuse Sandbox"]
