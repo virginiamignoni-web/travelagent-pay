@@ -550,6 +550,11 @@ footer {
 .pix-proof b { color: #FDB913; font-size: 9px; letter-spacing: .7px; }
 .pix-proof span, .pix-proof small { color: #FFFFFF; font-size: 9px; }
 .pix-proof code { overflow-wrap: anywhere; color: #FFFFFF; font-size: 10px; }
+.center-pix-offramp { position: relative; z-index: 1; display: grid !important; gap: 8px; margin-top: 10px; padding: 12px; border: 1px solid #FDB913; border-radius: 9px; background: rgba(253,185,19,.12); }
+.center-pix-offramp > div { display: grid; gap: 4px; }
+.center-pix-offramp b { color: #FDB913; font-size: 9px; letter-spacing: .7px; }
+.center-pix-offramp span, .center-pix-offramp small { color: #FFFFFF; font-size: 9px; }
+.center-pix-offramp button { width: 100%; margin: 0; background: #FDB913; color: #003366; }
 .pix-redemption-panel { position: relative; z-index: 1; margin: 13px 0; padding: 14px; border: 1px solid rgba(253,185,19,.5); border-radius: 12px; background: rgba(253,185,19,.1); }
 .pix-redemption-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pix-redemption-heading span { color: #FDB913; font: 800 9px/1 "Poppins",sans-serif; letter-spacing: 1px; }

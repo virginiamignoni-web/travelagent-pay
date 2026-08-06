@@ -595,6 +595,9 @@ async function renderMyTrips() {
 }
 
 function protectionVoucherCard(voucher) {
+  const pixDelivery = voucher.status === "issued"
+    ? `<div class="center-pix-offramp"><div><b>PIX OFF-RAMP · SANDBOX</b><span>Deliver this eligible benefit in BRL through the Pix test flow.</span></div><button type="button" data-center-pix-redeem="${voucher.id}" data-voucher-code="${voucher.code}" data-voucher-type="${voucher.type}">Redeem benefit via Pix</button><small>No real BRL moves in this public demonstration.</small></div>`
+    : "";
   return `<article class="center-voucher">
     <div class="center-voucher-heading"><span>${voucher.label}</span><strong>${voucher.amount || "0.00"} <small>USDC</small></strong></div>
     <div class="center-voucher-facts">
@@ -603,6 +606,7 @@ function protectionVoucherCard(voucher) {
       <span><b>Bookings</b>BIT ${voucher.internalReference || "unavailable"} · PNR ${voucher.bookingReference || "unavailable"}</span>
     </div>
     <div class="center-voucher-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm || "SHA-256"}</b><code>${voucher.auditReceipt?.hash || "Hash pending"}</code>${voucher.settlement?.transactionHash ? `<b>Stellar microsettlement · ${voucher.settlement.amount} ${voucher.settlement.asset}</b><a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open in Stellar Expert ↗</span></a>` : `<b>Stellar microsettlement pending</b>`}</div>
+    ${pixDelivery}
     ${voucher.pixSettlement ? `<div class="pix-proof"><b>PIX SANDBOX · PAID</b><span>${voucher.pixSettlement.merchant.name}</span><code>${voucher.pixSettlement.endToEndId}</code><small>R$ ${voucher.pixSettlement.payout.amount} · no real BRL moved</small></div>` : ""}
     <small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Category-controlled use"}</small>
   </article>`;
@@ -985,6 +989,37 @@ tripsContent.addEventListener("click", (event) => {
 });
 
 protectionContent.addEventListener("click", async (event) => {
+  const pixRedeemButton = event.target.closest("button[data-center-pix-redeem]");
+  if (pixRedeemButton) {
+    pixRedeemButton.disabled = true;
+    const originalLabel = pixRedeemButton.textContent;
+    pixRedeemButton.textContent = "Processing Pix sandbox…";
+    try {
+      const merchantId = pixRedeemButton.dataset.voucherType === "hotel" ? "BR-AIRPORT-HOTEL-01" : pixRedeemButton.dataset.voucherType === "transport" ? "BR-AIRPORT-MOBILITY-01" : "BR-AIRPORT-FOOD-01";
+      const merchantCategory = pixRedeemButton.dataset.voucherType === "hotel" ? "airport_hotel" : pixRedeemButton.dataset.voucherType === "transport" ? "airport_transport" : "airport_food";
+      const response = await fetch(`/api/vouchers/${pixRedeemButton.dataset.centerPixRedeem}/redeem`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: pixRedeemButton.dataset.voucherCode, merchantId, merchantCategory }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || result.error || "Pix off-ramp could not be completed");
+      const sessionId = activeReservation?.journeyProtection?.sessionId || activeExternalProtection?.sessionId;
+      const protection = await (await fetch(`/api/protection-sessions/${sessionId}`)).json();
+      if (activeReservation) {
+        activeReservation.journeyProtection = protection;
+        renderProtectionState(activeReservation, protection);
+      } else {
+        activeExternalProtection = protection;
+        renderProtectionState(externalReservationView(protection), protection);
+      }
+    } catch (error) {
+      pixRedeemButton.disabled = false;
+      pixRedeemButton.textContent = originalLabel;
+      window.alert(error.message);
+    }
+    return;
+  }
   const recoveryButton = event.target.closest("button[data-recovery-action]");
   if (recoveryButton && activeReservation?.journeyProtection?.sessionId) {
     recoveryButton.disabled = true;
