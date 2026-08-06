@@ -28,10 +28,12 @@ export function sandboxMerchantForVoucher(type) {
 export function createPixOffRampService({ brlPerUsdc = 5.5 } = {}) {
   return {
     mode: "sandbox",
-    async settle({ voucher, merchantId, merchantCategory } = {}) {
+    async settle({ voucher, merchantId, merchantCategory, pixPayload = null } = {}) {
       const merchant = sandboxMerchantForVoucher(voucher.type);
       if (merchantId !== merchant.id) throw Object.assign(new Error("Merchant is not registered for this voucher"), { statusCode: 403 });
       if (merchantCategory !== merchant.category || !voucher.validFor.includes(merchantCategory)) throw Object.assign(new Error("Merchant category is not eligible for this voucher"), { statusCode: 403 });
+      const normalizedPixPayload = String(pixPayload || "").trim();
+      if (normalizedPixPayload && (normalizedPixPayload.length < 20 || !normalizedPixPayload.startsWith("000201"))) throw Object.assign(new Error("Pix Copy and Paste code is invalid"), { statusCode: 400 });
       const faceValue = voucher.faceValue || faceValueForVoucher(voucher.type);
       const requestedAt = new Date().toISOString();
       const usdcQuoted = Number(voucher.amount || faceValue.amount).toFixed(2);
@@ -40,6 +42,7 @@ export function createPixOffRampService({ brlPerUsdc = 5.5 } = {}) {
         id: randomUUID(), mode: "pix_offramp_sandbox", provider: "BIT Travels Pix Off-ramp Simulator", status: "paid_sandbox",
         requestedAt, completedAt: requestedAt, endToEndId: pixEndToEndId(new Date(requestedAt)),
         merchant, payout: { amount: brlPayout, currency: "BRL", rail: "PIX", sandbox: true },
+        pixRequest: normalizedPixPayload ? { format: "EMV/BR Code", payloadDigest: createHash("sha256").update(normalizedPixPayload).digest("hex") } : null,
         quote: { brlPerUsdc: brlPerUsdc.toFixed(4), sourceAmountUsdc: usdcQuoted, destinationAmountBrl: brlPayout, expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() },
         note: "Pix payout simulated in sandbox. No BRL moved. Stellar Testnet issuance proof remains independently verifiable.",
       };

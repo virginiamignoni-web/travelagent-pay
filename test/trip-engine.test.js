@@ -411,6 +411,17 @@ test("redeems a voucher through the Brazil Pix sandbox once and blocks duplicate
   assert.throws(() => redeemVoucher({ voucherId: issued.voucher.id, code: issued.voucher.code, merchantCategory: "airport_food" }), /already been redeemed/);
 });
 
+test("binds a Pix Copy and Paste request to the sandbox payment receipt", async () => {
+  const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
+  const voucher = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;
+  const merchant = sandboxMerchantForVoucher(voucher.type);
+  const pixPayload = "000201010212BRGOVBCBPIXBITTRAVELSSANDBOX6304DEMO";
+  const settlement = await createPixOffRampService().settle({ voucher, merchantId: merchant.id, merchantCategory: merchant.category, pixPayload });
+  assert.equal(settlement.pixRequest.format, "EMV/BR Code");
+  assert.match(settlement.pixRequest.payloadDigest, /^[a-f0-9]{64}$/);
+  await assert.rejects(() => createPixOffRampService().settle({ voucher, merchantId: merchant.id, merchantCategory: merchant.category, pixPayload: "invalid" }), /Pix Copy and Paste code is invalid/);
+});
+
 test("rejects a Pix payout to a merchant outside the voucher category", async () => {
   const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
   const voucher = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" }).voucher;

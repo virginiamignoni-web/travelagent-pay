@@ -270,7 +270,7 @@ app.post("/api/vouchers/:voucherId/redeem", async (req, res, next) => {
     const merchant = sandboxMerchantForVoucher(voucher.type);
     const merchantId = req.body.merchantId || merchant.id;
     const merchantCategory = req.body.merchantCategory || merchant.category;
-    const pixSettlement = await pixOffRampService.settle({ voucher: { ...voucher, faceValue: voucher.faceValue || faceValueForVoucher(voucher.type) }, merchantId, merchantCategory });
+    const pixSettlement = await pixOffRampService.settle({ voucher: { ...voucher, faceValue: voucher.faceValue || faceValueForVoucher(voucher.type) }, merchantId, merchantCategory, pixPayload: req.body.pixPayload });
     return res.json(redeemVoucher({ voucherId: req.params.voucherId, ...req.body, merchantId, merchantCategory, pixSettlement }));
   } catch (error) {
     return next(error);

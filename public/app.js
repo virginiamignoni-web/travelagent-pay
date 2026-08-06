@@ -275,16 +275,37 @@ document.querySelector("#use-demo-pix").addEventListener("click", () => {
 });
 
 async function performPixPayment(pixButton, pixPayload = null) {
+  const centerRedeemButton = pixButton.matches("button[data-center-pix-redeem]") ? pixButton : null;
   const redeemButton = pixButton.matches("button[data-wallet-redeem]") ? pixButton : null;
   const approveButton = redeemButton ? null : pixButton;
-  const merchant = redeemButton?.dataset.voucherType === "hotel"
+  const voucherType = (redeemButton || centerRedeemButton)?.dataset.voucherType;
+  const merchant = voucherType === "hotel"
     ? { id: "BR-AIRPORT-HOTEL-01", category: "airport_hotel" }
-    : redeemButton?.dataset.voucherType === "transport"
+    : voucherType === "transport"
       ? { id: "BR-AIRPORT-MOBILITY-01", category: "airport_transport" }
       : { id: "BR-AIRPORT-FOOD-01", category: "airport_food" };
   pixButton.disabled = true;
-  pixButton.textContent = redeemButton ? "Preparing Pix payment…" : "Opening your wallet…";
+  pixButton.textContent = centerRedeemButton ? "Processing Pix sandbox…" : redeemButton ? "Preparing Pix payment…" : "Opening your wallet…";
   try {
+    if (centerRedeemButton) {
+      const response = await fetch(`/api/vouchers/${centerRedeemButton.dataset.centerPixRedeem}/redeem`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: centerRedeemButton.dataset.voucherCode, merchantId: merchant.id, merchantCategory: merchant.category, pixPayload }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || result.error || "Pix off-ramp could not be completed");
+      const sessionId = activeReservation?.journeyProtection?.sessionId || activeExternalProtection?.sessionId;
+      const protection = await (await fetch(`/api/protection-sessions/${sessionId}`)).json();
+      if (activeReservation) {
+        activeReservation.journeyProtection = protection;
+        renderProtectionState(activeReservation, protection);
+      } else {
+        activeExternalProtection = protection;
+        renderProtectionState(externalReservationView(protection), protection);
+      }
+      return;
+    }
     if (!connectedWallet) await connectFreighter();
     if (!connectedWallet) throw new Error("Connect Freighter on Testnet to approve the Pix payment");
     const voucherId = redeemButton?.dataset.walletRedeem || approveButton.dataset.walletApprove;
@@ -607,7 +628,7 @@ function protectionVoucherCard(voucher) {
     </div>
     <div class="center-voucher-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm || "SHA-256"}</b><code>${voucher.auditReceipt?.hash || "Hash pending"}</code>${voucher.settlement?.transactionHash ? `<b>Stellar microsettlement · ${voucher.settlement.amount} ${voucher.settlement.asset}</b><a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open in Stellar Expert ↗</span></a>` : `<b>Stellar microsettlement pending</b>`}</div>
     ${pixDelivery}
-    ${voucher.pixSettlement ? `<div class="pix-proof"><b>PIX SANDBOX · PAID</b><span>${voucher.pixSettlement.merchant.name}</span><code>${voucher.pixSettlement.endToEndId}</code><small>R$ ${voucher.pixSettlement.payout.amount} · no real BRL moved</small></div>` : ""}
+    ${voucher.pixSettlement ? `<div class="pix-proof"><b>PIX SANDBOX · PAID</b><span>${voucher.pixSettlement.merchant.name}</span><code>${voucher.pixSettlement.endToEndId}</code>${voucher.pixSettlement.pixRequest?.payloadDigest ? `<small>Pix Copia e Cola · SHA-256</small><code>${voucher.pixSettlement.pixRequest.payloadDigest}</code>` : ""}<small>R$ ${voucher.pixSettlement.payout.amount} · no real BRL moved</small></div>` : ""}
     <small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Category-controlled use"}</small>
   </article>`;
 }
@@ -991,33 +1012,11 @@ tripsContent.addEventListener("click", (event) => {
 protectionContent.addEventListener("click", async (event) => {
   const pixRedeemButton = event.target.closest("button[data-center-pix-redeem]");
   if (pixRedeemButton) {
-    pixRedeemButton.disabled = true;
-    const originalLabel = pixRedeemButton.textContent;
-    pixRedeemButton.textContent = "Processing Pix sandbox…";
-    try {
-      const merchantId = pixRedeemButton.dataset.voucherType === "hotel" ? "BR-AIRPORT-HOTEL-01" : pixRedeemButton.dataset.voucherType === "transport" ? "BR-AIRPORT-MOBILITY-01" : "BR-AIRPORT-FOOD-01";
-      const merchantCategory = pixRedeemButton.dataset.voucherType === "hotel" ? "airport_hotel" : pixRedeemButton.dataset.voucherType === "transport" ? "airport_transport" : "airport_food";
-      const response = await fetch(`/api/vouchers/${pixRedeemButton.dataset.centerPixRedeem}/redeem`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code: pixRedeemButton.dataset.voucherCode, merchantId, merchantCategory }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.detail || result.error || "Pix off-ramp could not be completed");
-      const sessionId = activeReservation?.journeyProtection?.sessionId || activeExternalProtection?.sessionId;
-      const protection = await (await fetch(`/api/protection-sessions/${sessionId}`)).json();
-      if (activeReservation) {
-        activeReservation.journeyProtection = protection;
-        renderProtectionState(activeReservation, protection);
-      } else {
-        activeExternalProtection = protection;
-        renderProtectionState(externalReservationView(protection), protection);
-      }
-    } catch (error) {
-      pixRedeemButton.disabled = false;
-      pixRedeemButton.textContent = originalLabel;
-      window.alert(error.message);
-    }
+    pendingPixButton = pixRedeemButton;
+    pixPayloadInput.value = "";
+    demoPixNotice.classList.add("hidden");
+    pixCameraStatus.textContent = "Paste a Pix Copy and Paste code or load the sandbox example.";
+    pixScanner.showModal();
     return;
   }
   const recoveryButton = event.target.closest("button[data-recovery-action]");
