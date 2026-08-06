@@ -596,3 +596,44 @@ footer {
 .external-protection-copy{padding:26px;border-radius:16px;background:#003366;color:#fff}.external-protection-copy>span{color:#FDB913;font:800 9px/1 "Poppins",sans-serif;letter-spacing:1.4px}.external-protection-copy h3{margin:12px 0 8px;color:#fff;font-size:28px;line-height:1.12}.external-protection-copy p{color:#d7e3ee;font-size:13px;line-height:1.6}.external-protection-copy>div{display:flex;flex-direction:column;gap:5px;margin-top:22px;padding:14px;border-left:3px solid #FDB913;border-radius:9px;background:rgba(255,255,255,.08)}.external-protection-copy small{color:#c8d6e4;font-size:10px;line-height:1.45}
 .external-protection-form{display:grid;grid-template-columns:1fr 1fr;gap:13px}.external-protection-form>label,.external-protection-form .split label{display:flex;flex-direction:column;gap:6px;color:#003366;font-size:10px;font-weight:800}.external-protection-form input,.external-protection-form select{width:100%}.external-protection-form .split{display:grid;grid-template-columns:1fr 1fr;grid-column:1/-1;gap:12px}.external-protection-form .confirmation-check,.external-protection-form>button,.external-protection-form>small{grid-column:1/-1}.external-protection-form>small{color:#60758a;font-size:9px;line-height:1.5}
 @media(max-width:760px){.external-protection-onboarding{grid-template-columns:1fr;padding:18px}.external-protection-form{grid-template-columns:1fr}.external-protection-form>label{grid-column:1/-1}}
+
+/* Readability pass: comfortable presentation size on desktop and mobile */
+body { font-size: 17px; line-height: 1.55; }
+input, select, textarea, button { font-size: 15px; line-height: 1.35; }
+main p, main li { font-size: 14px !important; line-height: 1.6; }
+main small { font-size: 12px !important; line-height: 1.5; }
+.product-nav a, .network, .wallet-button { font-size: 13px !important; }
+.eyebrow, .card-label, .monitor-top span, .anac-rules > span,
+.protection-actions span, .testnet-demonstration span, .center-audit span,
+.external-protection-copy > span, .pix-scanner-heading span,
+.pix-redemption-heading span, .booking-checkout > span { font-size: 11px !important; }
+.external-protection-form > label,
+.external-protection-form .split label,
+.pix-scanner-card > label { font-size: 14px !important; }
+.field-optional { font-size: 10px !important; }
+.flight-monitor p, .anac-rules small, .flight-verification span,
+.center-entitlements b, .center-entitlements span,
+.recovery-actions p, .recovery-actions small { font-size: 12px !important; }
+.center-voucher-heading span { font-size: 17px !important; }
+.center-voucher-heading strong { font-size: 22px !important; }
+.center-voucher-facts span { grid-template-columns: 90px 1fr; font-size: 13px !important; line-height: 1.45; }
+.center-voucher-facts b, .center-voucher-proof b,
+.center-pix-offramp b, .pix-proof b { font-size: 11px !important; }
+.center-voucher-proof code, .pix-proof code { font-size: 12px !important; line-height: 1.5; }
+.center-pix-offramp span, .center-pix-offramp small,
+.pix-proof span, .pix-proof small, .center-voucher > small { font-size: 12px !important; }
+.center-pix-offramp button { font-size: 14px !important; padding: 13px 16px; }
+.wallet-voucher-summary > span, .wallet-voucher-meta span { font-size: 12px !important; }
+.wallet-voucher-meta b, .wallet-proof b, .wallet-proof small { font-size: 11px !important; }
+.pix-redemption-flow span, .pix-redemption-flow small,
+.pix-receipt > span, .pix-receipt b, .pix-receipt code,
+.pix-receipt small { font-size: 11px !important; }
+.pix-scanner-card > p, .pix-camera > span, .demo-pix-notice { font-size: 13px !important; }
+
+@media(max-width:600px) {
+  body { font-size: 16px; }
+  main { padding-inline: 14px; }
+  .protection-center, .voucher-wallet { padding: 20px 15px; }
+  .center-voucher { padding: 17px; }
+  .center-voucher-facts span { grid-template-columns: 1fr; gap: 3px; }
+}
