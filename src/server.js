@@ -25,6 +25,7 @@ import { createEtherfuseStellarService } from "./etherfuse-stellar.js";
 import { inspectEventWebsite } from "./event-inspector.js";
 import { createBookingStellarService } from "./booking-stellar.js";
 import { createExternalTravelProtectionCase } from "./travel-protection.js";
+import { createVoucherWalletFundingService } from "./voucher-wallet-funding.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -53,6 +54,10 @@ const bookingStellar = createBookingStellarService({
   treasuryAddress: process.env.BOOKING_TREASURY || voucherSettlementService.issuerAddress,
   proofAmount: process.env.BOOKING_TESTNET_PAYMENT_USDC || "0.10",
 });
+const voucherWalletFunding = createVoucherWalletFundingService({
+  fundingWallet: process.env.VOUCHER_FUNDING_WALLET,
+  recipientAddress: process.env.VOUCHER_DEFAULT_RECIPIENT,
+});
 
 function linkedServicesForReservation(reservation) {
   const hotelReference = reservation.serviceReferences?.hotel || (reservation.hotel ? { reference: `${reservation.internalReference}-H`, checkIn: reservation.trip?.departureDate, checkOut: reservation.trip?.returnDate } : null);
@@ -71,7 +76,7 @@ app.get("/vendor/freighter-api.js", (_req, res) => {
 app.use(express.static(join(here, "..", "public")));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), aviationstackConfigured: Boolean(process.env.AVIATIONSTACK_ACCESS_KEY), etherfuseConfigured: etherfuse.enabled, etherfuseEnvironment: etherfuse.enabled ? "sandbox" : null, voucherMicrosettlementConfigured: voucherSettlementService.enabled, voucherTreasury: voucherSettlementService.issuerAddress, bookingSettlementConfigured: bookingStellar.enabled, bookingTreasury: bookingStellar.treasuryAddress, bookingProofAmount: bookingStellar.proofAmount, database: databaseInfo() });
+  res.json({ ok: true, project: "BIT Travels Concierge", paymentMode, network: "stellar:testnet", duffelConfigured: Boolean(process.env.DUFFEL_ACCESS_TOKEN), aviationstackConfigured: Boolean(process.env.AVIATIONSTACK_ACCESS_KEY), etherfuseConfigured: etherfuse.enabled, etherfuseEnvironment: etherfuse.enabled ? "sandbox" : null, voucherMicrosettlementConfigured: voucherSettlementService.enabled, voucherTreasury: voucherSettlementService.issuerAddress, voucherWalletFundingConfigured: voucherWalletFunding.enabled, voucherFundingWallet: voucherWalletFunding.fundingWallet, bookingSettlementConfigured: bookingStellar.enabled, bookingTreasury: bookingStellar.treasuryAddress, bookingProofAmount: bookingStellar.proofAmount, database: databaseInfo() });
 });
 
 app.get("/api/etherfuse/assets", async (req, res, next) => {
@@ -265,6 +270,23 @@ app.post("/api/protection-sessions/:sessionId/events", async (req, res, next) =>
 app.post("/api/protection-sessions/:sessionId/recovery-actions/:actionId", (req, res, next) => {
   try {
     return res.json(decideRecoveryAction({ sessionId: req.params.sessionId, actionId: req.params.actionId, decision: req.body.decision, actor: req.body.actor || "traveler" }));
+  } catch (error) { return next(error); }
+});
+
+app.post("/api/vouchers/:voucherId/funding/transaction", async (req, res, next) => {
+  try {
+    const voucher = findVouchers({}).find((item) => item.id === req.params.voucherId);
+    if (!voucher) return res.status(404).json({ error: "Voucher was not found" });
+    return res.json(await voucherWalletFunding.build({ sourceAddress: req.body.sourceAddress, voucher }));
+  } catch (error) { return next(error); }
+});
+
+app.post("/api/vouchers/:voucherId/funding/submit", async (req, res, next) => {
+  try {
+    const voucher = findVouchers({}).find((item) => item.id === req.params.voucherId);
+    if (!voucher) return res.status(404).json({ error: "Voucher was not found" });
+    const settlement = await voucherWalletFunding.submit({ signedXdr: req.body.signedXdr, sourceAddress: req.body.sourceAddress, voucher });
+    return res.json(attachVoucherSettlement({ voucherId: voucher.id, settlement }));
   } catch (error) { return next(error); }
 });
 
