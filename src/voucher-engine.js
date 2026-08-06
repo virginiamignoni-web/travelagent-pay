@@ -174,8 +174,17 @@ function applyAnacRules(session) {
 
 export function createProtectionSession({ input = {}, primaryFlight } = {}) {
   const createdAt = now();
+  const tripSource = input.tripSource || (input.internalReference ? "BIT_TRAVELS" : "EXTERNAL");
   const session = {
     sessionId: randomUUID(), createdAt, updatedAt: createdAt, status: "monitoring", currentEvent: "on_time", delayMinutes: 0,
+    caseId: input.travelProtection?.caseId || null,
+    product: input.travelProtection?.product || "BIT_TRAVELS_CONCIERGE_PROTECTION",
+    tripSource,
+    plan: input.travelProtection?.plan || null,
+    consent: input.travelProtection?.consent || null,
+    validation: input.travelProtection?.validation || { status: tripSource === "BIT_TRAVELS" ? "validated" : "pending", method: tripSource === "BIT_TRAVELS" ? "bit_travels_booking" : "manual" },
+    externalBooking: input.travelProtection?.externalBooking || null,
+    preferredDeliveryChannel: input.travelProtection?.preferredDeliveryChannel || "wallet",
     flight: { airline: primaryFlight?.airline || "Flight pending", number: primaryFlight?.flightNumber || input.flightNumber || null, departureAt: primaryFlight?.departureAt || null, arrivalAt: primaryFlight?.arrivalAt || null, origin: input.origin || null, destination: input.destinationAirport || null },
     bookingReference: String(input.bookingReference || "").trim().toUpperCase() || null,
     internalReference: String(input.internalReference || "").trim().toUpperCase() || null,
@@ -190,7 +199,7 @@ export function createProtectionSession({ input = {}, primaryFlight } = {}) {
       rule: "Hotel assistance applies when an overnight stay is required, except for special-assistance needs; in the passenger's home city, ground transport may be offered instead.",
     },
     linkedServices: input.linkedServices || {}, recoveryActions: [], entitlementOptions: [], entitlements: [], voucherIds: [],
-    ledger: [{ at: createdAt, event: "monitoring_started", flight: primaryFlight?.airline || "pending" }],
+    ledger: [{ at: createdAt, event: "monitoring_started", flight: primaryFlight?.airline || "pending", tripSource, caseId: input.travelProtection?.caseId || null }],
     disclaimer: "Testnet demonstration. Amounts are illustrative; eligibility, value, and settlement depend on airline agreements and operational validation.",
   };
   protectionSessions.set(session.sessionId, session);

@@ -1,8 +1,8 @@
-# BIT Travels Passenger Recovery Platform
+# BIT Travels Travel Protection Platform
 
 > No passenger should wait in line to receive a right they already have.
 
-BIT Travels combines an AI travel concierge with an event-driven passenger recovery platform. The hackathon prototype demonstrates two connected Stellar use cases:
+BIT Travels combines an AI travel concierge with an independent Travel Protection layer. A passenger can activate protection for a BIT Travels booking or for a trip bought from an airline, agency or OTA. The hackathon prototype demonstrates two connected Stellar use cases:
 
 1. **Agentic Payments (HTTP 402 / MPP):** an autonomous agent requests premium travel intelligence, receives `402 Payment Required`, settles 0.01 test USDC on Stellar Testnet, retries, and unlocks the protected itinerary.
 2. **Brazil off-ramp for passenger assistance:** a verified flight disruption activates assistance rules, funds a passenger voucher in test USDC, and prepares its redemption to BRL/Pix through Etherfuse Sandbox.
@@ -54,6 +54,21 @@ PNR activates trip monitoring
   -> provider status completes redemption and the audit trail
 ```
 
+Travel Protection can start from either `BIT_TRAVELS` or `EXTERNAL`. External trips use a dedicated onboarding endpoint and record versioned consent plus a validation state before reusing the same monitoring, benefit, Stellar and Pix lifecycle.
+
+### External Travel Protection onboarding
+
+```text
+Passenger enters airline, flight, date and route
+  -> explicit Travel Protection consent is recorded
+  -> external booking is pending or requires manual review
+  -> independent protection case starts monitoring
+  -> eligible disruption creates an assistance benefit
+  -> Pix, wallet, QR code or voucher can deliver the benefit
+```
+
+API: `POST /api/travel-protection/cases`. The Pix off-ramp remains a delivery channel; it is not required to create or monitor a protection case.
+
 ## Product architecture
 
 ```text
@@ -63,10 +78,10 @@ BIT Travels
 |   |-- Build and reserve
 |   |-- My trips
 |   `-- Voucher wallet
-`-- Passenger Recovery Platform
+`-- Travel Protection Platform
     |-- Event engine
     |-- Regulatory rules engine
-    |-- Voucher and payment engine
+    |-- Benefit delivery (Pix, wallet, QR code, voucher)
     |-- Stellar audit and settlement layer
     `-- Airline / insurer operational record
 ```

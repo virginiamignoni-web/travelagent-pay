@@ -2,7 +2,7 @@
 
 ## Product boundary
 
-BIT Concierge is the passenger-facing experience. BIT Passenger Recovery Platform is the B2B orchestration layer behind it. They are one product with separable commercial surfaces.
+BIT Concierge and BIT Travel Protection are separate passenger entry flows that share the B2B protection platform. Concierge protection may originate from a BIT booking; Travel Protection accepts a valid external trip without requiring a concierge purchase.
 
 ## Components
 
@@ -15,6 +15,7 @@ BIT Concierge is the passenger-facing experience. BIT Passenger Recovery Platfor
 | Inventory adapters | Duffel Test flights/orders and mapped hotels | `src/duffel.js`, `src/hotels.js`, `src/geo.js` |
 | Booking proof | builds and verifies Freighter-signed Testnet payment | `src/booking-stellar.js`, `src/reservation-engine.js` |
 | Recovery engine | disruption events, rules, assistance and audit records | `src/aviationstack.js`, `src/voucher-engine.js` |
+| External protection onboarding | consent, external-trip validation state, plan and preferred delivery channel | `src/travel-protection.js` |
 | Voucher settlement | issuer treasury transfers test USDC to traveler | `src/stellar-voucher-settlement.js` |
 | Off-ramp | Etherfuse Sandbox quote/order and Stellar anchor payment | `src/etherfuse.js`, `src/etherfuse-stellar.js` |
 | Persistence | SQLite reservation, voucher and audit storage | `src/database.js` |
@@ -55,6 +56,12 @@ The 0.01 USDC MPP fee purchases agent intelligence. It is separate from the 0.10
 ### Passenger recovery
 
 `monitoring -> disruption_reported -> externally_verified/demo-confirmed -> rights_applied -> voucher_issued -> voucher_funded -> off-ramp_pending -> redeemed`
+
+### External Travel Protection
+
+`consent_recorded -> validation_pending/manual_review -> monitoring -> eligibility_decision -> benefit_issued -> delivery_selected -> Pix/wallet/voucher -> redeemed`
+
+Pix is one benefit-delivery channel. Protection onboarding and monitoring do not require a wallet or a Pix transaction.
 
 Hotel and rental-car recovery actions only exist when those services were selected and linked to the BIT reservation.
 

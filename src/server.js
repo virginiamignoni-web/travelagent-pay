@@ -24,6 +24,7 @@ import { createEtherfuseClient } from "./etherfuse.js";
 import { createEtherfuseStellarService } from "./etherfuse-stellar.js";
 import { inspectEventWebsite } from "./event-inspector.js";
 import { createBookingStellarService } from "./booking-stellar.js";
+import { createExternalTravelProtectionCase } from "./travel-protection.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localEnv = join(here, "..", ".env");
@@ -187,6 +188,14 @@ app.get("/api/protection-sessions/:sessionId", (req, res) => {
   const session = getProtectionSession(req.params.sessionId);
   if (!session) return res.status(404).json({ error: "Protection session was not found or expired" });
   return res.json(session);
+});
+
+app.post("/api/travel-protection/cases", (req, res, next) => {
+  try {
+    const travelerWallet = req.body.travelerWallet || req.header("x-traveler-wallet") || null;
+    const protection = createExternalTravelProtectionCase({ input: req.body, travelerWallet });
+    return res.status(201).json(protection);
+  } catch (error) { return next(error); }
 });
 
 async function settleProtectionVouchers(protection) {

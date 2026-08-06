@@ -57,3 +57,12 @@ Use disposable Testnet accounts only.
 - Distinguish agent-service fee, booking proof and voucher funding.
 - Say explicitly that Duffel and Etherfuse run in test/sandbox modes.
 - Never display `.env`, secret keys or complete API credentials.
+
+## External Travel Protection path
+
+1. Open **Protection** without confirming a concierge booking.
+2. Enter an airline, flight number, date, origin, destination and optional PNR.
+3. Accept the versioned Travel Protection consent and activate the case.
+4. Confirm the screen labels the trip as `EXTERNAL` and exposes its validation state.
+5. Run the transparent two-hour delay scenario.
+6. Confirm the same Stellar-funded assistance and Pix delivery flow works without a BIT Travels reservation.

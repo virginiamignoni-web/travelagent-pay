@@ -215,6 +215,7 @@ const walletNav = document.querySelector("#wallet-nav");
 const voucherWallet = document.querySelector("#voucher-wallet");
 const walletContent = document.querySelector("#wallet-content");
 let activeReservation = null;
+let activeExternalProtection = null;
 let activeWalletReport = null;
 let pixStatusTimer = null;
 const pixScanner = document.querySelector("#pix-scanner");
@@ -610,13 +611,14 @@ function protectionVoucherCard(voucher) {
 function renderProtectionState(reservation, protection) {
   const delay = protection?.delayMinutes || 0;
   const vouchers = protection?.vouchers || [];
-  const internalReference = reservation.internalReference || reservation.bookingReference;
+  const internalReference = reservation.internalReference || reservation.bookingReference || protection?.externalBooking?.referenceMasked || "External trip";
+  const referenceLabel = protection?.tripSource === "EXTERNAL" ? "External booking" : "BIT reference";
   const verification = protection?.verification;
   const verificationBanner = verification
     ? `<div class="flight-verification ${verification.verified ? "verified" : "pending"}"><i></i><div><b>${verification.verified ? `${verification.simulated ? "Testnet demonstration" : "Delay externally confirmed"} · ${verification.delayMinutes} min` : "Status not confirmed yet"}</b><span>${verification.verified ? `${verification.source} · ${verification.status}` : "The external source does not yet have a confirmable status for this flight. Monitoring will continue."}</span></div><small>${verification.checkedAt ? new Date(verification.checkedAt).toLocaleString() : ""}</small></div>`
     : `<div class="flight-verification idle"><i></i><div><b>Monitoring ready</b><span>Report a change so the agent can cross-check it with the external status source.</span></div></div>`;
   protectionContent.innerHTML = `<div class="protection-overview">
-    <article class="flight-monitor"><div class="monitor-top"><span>ACTIVE MONITORING</span><b>${protection?.flight?.number || "Flight not issued"}</b></div><h3>${reservation.trip?.origin || "Origin"} → ${reservation.trip?.destinationAirport || reservation.destination}</h3><p>${protection?.flight?.airline || reservation.flight?.airline || "Airline pending"} · BIT reference ${internalReference}</p><strong>${delay}<small>minutes delayed</small></strong></article>
+    <article class="flight-monitor"><div class="monitor-top"><span>${protection?.tripSource === "EXTERNAL" ? "TRAVEL PROTECTION · EXTERNAL TRIP" : "ACTIVE MONITORING"}</span><b>${protection?.flight?.number || "Flight not issued"}</b></div><h3>${reservation.trip?.origin || "Origin"} → ${reservation.trip?.destinationAirport || reservation.destination}</h3><p>${protection?.flight?.airline || reservation.flight?.airline || "Airline pending"} · ${referenceLabel} ${internalReference}</p><strong>${delay}<small>minutes delayed</small></strong></article>
     <article class="anac-rules"><span>ASSISTANCE · ANAC RESOLUTION 400/2016</span><div class="anac-timeline"><i class="active">On time</i><i class="${delay >= 60 ? "active" : ""}">1h<br>Communication</i><i class="${delay >= 120 ? "active" : ""}">2h<br>Meals</i><i class="${delay >= 240 ? "active" : ""}">4h<br>Reaccommodation</i></div><small>Hotel assistance depends on an overnight stay and the passenger's location; ground transport may apply in the passenger's home city.</small></article>
   </div>${verificationBanner}
   <div class="protection-actions"><div><span>PASSENGER REPORT · EXTERNAL VERIFICATION</span><h3>Report flight status</h3></div><button data-center-event="on_time">Report on time</button><button data-center-event="delayed_60">Report 1h delay</button><button data-center-event="delayed_120">Report 2h delay</button><button data-center-event="delayed_240" data-overnight="true">Report 4h delay + overnight stay</button></div>
@@ -624,7 +626,37 @@ function renderProtectionState(reservation, protection) {
   ${protection?.entitlements?.length ? `<div class="center-entitlements"><h3>Activated rights</h3>${protection.entitlements.map((item) => `<article><b>${item.type.replaceAll("_", " ")}</b><span>${item.type === "communication" ? "Internet or telephone access provided during the wait." : item.detail}</span></article>`).join("")}</div>` : ""}
   ${protection?.recoveryActions?.length ? `<div class="recovery-actions"><div class="recovery-heading"><span>TRIP RECOVERY</span><h3>Linked hotel and mobility services</h3></div>${protection.recoveryActions.map((action) => `<article><div><b>${action.title}</b><span>${action.service?.name || "Linked service"}</span><p>${action.detail}</p><code>${action.auditHash}</code></div><aside><strong>${action.status.replaceAll("_", " ")}</strong>${action.status === "pending_approval" ? `<button data-recovery-action="${action.id}" data-decision="authorized">Authorize in Testnet</button><button class="secondary" data-recovery-action="${action.id}" data-decision="rejected">Reject</button>` : `<small>${action.execution?.note || "Auditable decision recorded."}</small>`}</aside></article>`).join("")}</div>` : ""}
   ${vouchers.length ? `<div class="center-vouchers"><h3>Issued benefits</h3>${vouchers.map(protectionVoucherCard).join("")}</div>` : `<div class="no-benefits"><h3>No assistance required</h3><p>The flight is being monitored. Vouchers will appear here when an eligible trigger is recorded.</p></div>`}
-  <div class="center-audit"><div><span>AUDIT TRAIL</span><h3>${protection?.ledger?.length || 0} recorded event(s)</h3></div><code>Session ${protection?.sessionId || "unavailable"}</code><small>All times are recorded in ISO format; vouchers include a SHA-256 hash and legal reference.</small></div>`;
+  <div class="center-audit"><div><span>AUDIT TRAIL</span><h3>${protection?.ledger?.length || 0} recorded event(s)</h3></div><code>${protection?.caseId ? `Case ${protection.caseId} · ` : ""}Session ${protection?.sessionId || "unavailable"}</code><small>All times are recorded in ISO format; vouchers include a SHA-256 hash and legal reference. Validation: ${protection?.validation?.status || "not available"}.</small></div>`;
+}
+
+function renderExternalProtectionOnboarding() {
+  protectionContent.innerHTML = `<section class="external-protection-onboarding">
+    <div class="external-protection-copy"><span>BIT TRAVELS TRAVEL PROTECTION</span><h3>Protect a trip you already bought</h3><p>Import the essential flight details without booking through the concierge. The demo creates a separate protection case and keeps Pix as one benefit-delivery channel.</p><div><b>No wallet required for onboarding</b><small>A wallet is requested only if the passenger chooses an on-chain delivery or approves the sandbox off-ramp transaction.</small></div></div>
+    <form id="external-protection-form" class="external-protection-form">
+      <label>Airline<input name="airline" value="LATAM" required></label>
+      <label>Flight number<input name="flightNumber" value="LA8084" required></label>
+      <label>Departure date<input name="departureDate" type="date" required></label>
+      <div class="split"><label>Origin airport<input name="origin" value="GRU" minlength="3" maxlength="3" required></label><label>Destination airport<input name="destination" value="LHR" minlength="3" maxlength="3" required></label></div>
+      <label>Booking reference / PNR <span class="field-optional">Optional in demo</span><input name="bookingReference" maxlength="12" placeholder="ABC123"></label>
+      <label>Where was it purchased?<select name="bookingSource"><option value="airline">Airline</option><option value="agency">Travel agency</option><option value="ota">OTA</option><option value="other">Other</option></select></label>
+      <label>Preferred benefit channel<select name="preferredDeliveryChannel"><option value="pix">Pix</option><option value="wallet">Wallet</option><option value="qr_code">QR Code</option><option value="voucher">Digital voucher</option></select></label>
+      <label class="confirmation-check"><input name="consentAccepted" type="checkbox" required> I authorize reservation-data processing, flight monitoring, notifications, previously authorized assistance and auditable records for this demonstration.</label>
+      <button type="submit">Activate Travel Protection →</button>
+      <small>Testnet/sandbox only. A PNR entered here is stored in the local application database and is never written directly to Stellar.</small>
+    </form>
+  </section>`;
+  const dateField = protectionContent.querySelector('input[name="departureDate"]');
+  if (dateField) dateField.value = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+}
+
+function externalReservationView(protection) {
+  return {
+    destination: protection.flight.destination,
+    bookingReference: protection.externalBooking?.referenceMasked || "External trip",
+    flight: protection.flight,
+    trip: { origin: protection.flight.origin, destinationAirport: protection.flight.destination, departureDate: protection.externalBooking?.departureDate },
+    journeyProtection: protection,
+  };
 }
 
 async function openProtectionCenter(reservationId = null) {
@@ -635,7 +667,8 @@ async function openProtectionCenter(reservationId = null) {
   protectionCenter.classList.remove("hidden");
   voucherWallet.classList.add("hidden");
   document.querySelectorAll(".product-nav a").forEach((item) => item.classList.toggle("active", item === protectionNav));
-  if (!activeReservation) protectionContent.innerHTML = `<div class="empty-trips"><h3>No active trip</h3><p>Confirm a trip before activating protection.</p></div>`;
+  if (!activeReservation && activeExternalProtection) renderProtectionState(externalReservationView(activeExternalProtection), activeExternalProtection);
+  else if (!activeReservation) renderExternalProtectionOnboarding();
   else {
     let protection = activeReservation.journeyProtection;
     if (protection?.sessionId) {
@@ -965,7 +998,7 @@ protectionContent.addEventListener("click", async (event) => {
     return;
   }
   const button = event.target.closest("button[data-center-event], button[data-demo-delay]");
-  const sessionId = activeReservation?.journeyProtection?.sessionId;
+  const sessionId = activeReservation?.journeyProtection?.sessionId || activeExternalProtection?.sessionId;
   if (!button || !sessionId) return;
   const originalLabel = button.textContent;
   button.disabled = true;
@@ -975,9 +1008,38 @@ protectionContent.addEventListener("click", async (event) => {
     const response = await fetch(`/api/protection-sessions/${sessionId}/${endpoint}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: button.dataset.centerEvent, context: { overnightRequired: button.dataset.overnight === "true", atHomeCity: false } }) });
     const protection = await response.json();
     if (!response.ok) throw new Error(protection.detail || "Failed to record event");
-    activeReservation.journeyProtection = protection;
-    renderProtectionState(activeReservation, protection);
+    if (activeReservation) {
+      activeReservation.journeyProtection = protection;
+      renderProtectionState(activeReservation, protection);
+    } else {
+      activeExternalProtection = protection;
+      renderProtectionState(externalReservationView(protection), protection);
+    }
   } catch (error) { button.disabled = false; button.textContent = originalLabel; window.alert(error.message); }
+});
+
+protectionContent.addEventListener("submit", async (event) => {
+  if (event.target.id !== "external-protection-form") return;
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const payload = Object.fromEntries(formData);
+  payload.consentAccepted = formData.get("consentAccepted") === "on";
+  if (connectedWallet) payload.travelerWallet = connectedWallet.address;
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = "Creating protection case…";
+  try {
+    const response = await fetch("/api/travel-protection/cases", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+    const protection = await response.json();
+    if (!response.ok) throw new Error(protection.detail || protection.error || "Travel Protection could not be activated");
+    activeReservation = null;
+    activeExternalProtection = protection;
+    renderProtectionState(externalReservationView(protection), protection);
+  } catch (error) {
+    submitButton.disabled = false;
+    submitButton.textContent = "Activate Travel Protection →";
+    window.alert(error.message);
+  }
 });
 
 walletContent.addEventListener("click", async (event) => {
