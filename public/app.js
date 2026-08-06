@@ -616,6 +616,9 @@ async function renderMyTrips() {
 }
 
 function protectionVoucherCard(voucher) {
+  const pixPaidAt = voucher.pixSettlement?.completedAt
+    ? new Date(voucher.pixSettlement.completedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" })
+    : null;
   const pixDelivery = voucher.status === "issued"
     ? `<div class="center-pix-offramp"><div><b>PIX OFF-RAMP · SANDBOX</b><span>Deliver this eligible benefit in BRL through the Pix test flow.</span></div><button type="button" data-center-pix-redeem="${voucher.id}" data-voucher-code="${voucher.code}" data-voucher-type="${voucher.type}">Redeem benefit via Pix</button><small>No real BRL moves in this public demonstration.</small></div>`
     : "";
@@ -628,8 +631,8 @@ function protectionVoucherCard(voucher) {
     </div>
     <div class="center-voucher-proof"><b>Audit hash · ${voucher.auditReceipt?.algorithm || "SHA-256"}</b><code>${voucher.auditReceipt?.hash || "Hash pending"}</code>${voucher.settlement?.transactionHash ? `<b>Stellar microsettlement · ${voucher.settlement.amount} ${voucher.settlement.asset}</b><a href="${voucher.settlement.explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${voucher.settlement.transactionHash}</code><span>Open in Stellar Expert ↗</span></a>` : `<b>Stellar microsettlement pending</b>`}</div>
     ${pixDelivery}
-    ${voucher.pixSettlement ? `<div class="pix-proof"><b>PIX SANDBOX · PAID</b><span>${voucher.pixSettlement.merchant.name}</span><code>${voucher.pixSettlement.endToEndId}</code>${voucher.pixSettlement.pixRequest?.payloadDigest ? `<small>Pix Copia e Cola · SHA-256</small><code>${voucher.pixSettlement.pixRequest.payloadDigest}</code>` : ""}<small>R$ ${voucher.pixSettlement.payout.amount} · no real BRL moved</small></div>` : ""}
-    <small>${voucher.status === "redeemed" ? `Redeemed by ${voucher.redeemedBy}` : "Category-controlled use"}</small>
+    ${voucher.pixSettlement ? `<div class="pix-proof"><b>PIX SANDBOX · PAID</b><span>${voucher.pixSettlement.merchant.name}</span><code>${voucher.pixSettlement.endToEndId}</code>${pixPaidAt ? `<span><b>Paid at</b> ${pixPaidAt}</span>` : ""}${voucher.pixSettlement.pixRequest?.payloadDigest ? `<small>Pix Copia e Cola · SHA-256</small><code>${voucher.pixSettlement.pixRequest.payloadDigest}</code>` : ""}<small>R$ ${voucher.pixSettlement.payout.amount} · no real BRL moved</small></div>` : ""}
+    <small>${voucher.status === "redeemed" ? `PAID · ${pixPaidAt || "timestamp unavailable"} · ${voucher.redeemedBy}` : "Category-controlled use"}</small>
   </article>`;
 }
 
@@ -707,8 +710,11 @@ async function openProtectionCenter(reservationId = null) {
 }
 
 function walletVoucherCard(voucher) {
+  const pixPaidAt = voucher.pixSettlement?.completedAt
+    ? new Date(voucher.pixSettlement.completedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" })
+    : null;
   return `<article class="wallet-voucher ${voucher.status}">
-    <div class="wallet-voucher-top"><span>${voucher.label}</span><strong>${voucher.amount || "0.00"} <small>USDC</small></strong><b>${voucher.status === "redeemed" ? "REDEEMED" : voucher.fundedInFull ? "FUNDED" : "LEGACY PROOF"}</b></div>
+    <div class="wallet-voucher-top"><span>${voucher.label}</span><strong>${voucher.amount || "0.00"} <small>USDC</small></strong><b>${voucher.status === "redeemed" ? "PAID" : voucher.fundedInFull ? "FUNDED" : "LEGACY PROOF"}</b></div>
     <div class="wallet-voucher-summary">
       <span><b>Network and issuance</b>Stellar Testnet · Issued under ${voucher.legalBasis || "the applicable passenger assistance rule"}</span>
       <span><b>Flight</b>${voucher.flightReference || "Unavailable"}</span>
