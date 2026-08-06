@@ -41,12 +41,18 @@ Use disposable Testnet accounts only.
 ## 4. Voucher and Pix/off-ramp demonstration
 
 1. Open the active trip's Protection Center.
-2. Use the labeled demo-delay path when the live aviation-data plan cannot confirm the event.
-3. Confirm that applicable assistance vouchers are issued and funded on Stellar Testnet.
-4. Open Voucher Wallet and inspect issuer, legal basis, audit hash, timestamp and Stellar explorer link.
-5. Select Pay with Pix, scan or paste a test merchant Pix payload, and create the Etherfuse Sandbox order.
-6. Approve the prepared Stellar transaction in Freighter.
-7. Check the provider status and show the completed audit lifecycle.
+2. Enter a real flight number and let Aviationstack verify the current status. When the provider returns an eligible delay, the rules engine issues the applicable voucher automatically without using the simulated-delay control.
+3. Use the labeled demo-delay path only when the live aviation-data plan cannot confirm an eligible event.
+4. Confirm that applicable assistance vouchers are issued. Funding is explicitly labeled as completed or pending on Stellar Testnet according to the configured treasury.
+5. Open Voucher Wallet and inspect issuer, flight, BIT/PNR references, audit hash, timestamp and any available Stellar explorer link.
+6. Select Pay with Pix and use the sandbox Pix Copia e Cola flow.
+7. Confirm that the voucher changes to `PAID` and records the merchant, payment date/time and Pix SHA-256 receipt. State clearly that no real BRL moved.
+
+### Live-flight proof shown in the hackathon rehearsal
+
+On 6 August 2026, the public demo queried LATAM flight `LA4509` (`FOR` to `CNF`) through Aviationstack. The provider response reported the flight as active and exposed a 123-minute arrival delay. The rules engine used that external response to issue the meal voucher automatically. The voucher then completed the Pix sandbox redemption flow and stored `PAID`, its payment timestamp, merchant identifier and SHA-256 audit evidence.
+
+This is evidence of live API orchestration and an end-to-end Testnet/sandbox workflow. It is not evidence of a production airline authorization, a funded production USDC voucher or a real BRL/Pix transfer. Live provider data can change after the recorded demonstration.
 
 ## Recording checklist
 
@@ -56,6 +62,7 @@ Use disposable Testnet accounts only.
 - Open at least one Stellar Explorer hash.
 - Distinguish agent-service fee, booking proof and voucher funding.
 - Say explicitly that Duffel and Etherfuse run in test/sandbox modes.
+- Say that the flight event is live provider data while settlement remains Testnet/sandbox.
 - Never display `.env`, secret keys or complete API credentials.
 
 ## External Travel Protection path

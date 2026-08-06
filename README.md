@@ -11,7 +11,7 @@ The passenger sees planning, bookings, active trips, protection and a voucher wa
 
 **Public demo:** https://bit-travels-concierge.onrender.com
 
-The public deployment runs in the clearly labeled local rehearsal mode and intentionally contains no supplier or wallet secrets. When no voucher treasury is configured, disruption assistance remains demonstrable but the new voucher is explicitly shown as awaiting Testnet funding. Verifiable funded Testnet executions are documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
+The public deployment is a clearly labeled Testnet/sandbox rehearsal. Aviationstack is configured server-side for live flight-status verification, while wallet secrets and production payment credentials are not exposed to the browser. When no voucher treasury is configured, disruption assistance remains demonstrable but the new voucher is explicitly shown as awaiting Testnet funding. Pix redemption is a sandbox simulation and moves no real BRL. Verifiable funded Testnet executions are documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Judge in 60 seconds
 
@@ -124,7 +124,7 @@ Follow [`DEMO.md`](./DEMO.md) for the local, Stellar Testnet and Etherfuse Sandb
 | Freighter | Testnet | user-controlled transaction approval | test assets only |
 | Duffel Orders | Developer Test mode | API offer/order objects and sandbox PNR | no commercial ticket or charge |
 | Etherfuse | Sandbox | quote/order API and Stellar approval workflow | no production BRL/Pix settlement |
-| Aviationstack | configured API plan | provider response when endpoint is available | graceful pending verification when plan blocks it |
+| Aviationstack | configured API plan | live provider response, flight status and reported delay when available | coverage, freshness and fields depend on the provider plan and source data |
 | Hotels / mobility | planning layer | event geocoding and mapped hotel records | prices, availability and routing are estimates |
 | SQLite | local persistent store | reservations, vouchers and audit events | not a production multi-tenant database |
 
@@ -149,4 +149,6 @@ The platform targets reduced airport queues, faster assistance, lower manual rec
 
 ## Current status
 
-This repository is a working hackathon prototype, not a production airline system. Production deployment requires authoritative operational feeds, airline authorization, PSP/off-ramp agreements, KYC/KYB and AML controls, privacy governance, idempotent job processing, observability and security review.
+This repository is a working hackathon prototype running on Testnet/sandbox, not a production airline system. The live demonstration can monitor a real flight through Aviationstack, apply the assistance rules, issue an auditable voucher, generate a Pix Copia e Cola sandbox payload and record its simulated payment with date, time and SHA-256 evidence. No real USDC or BRL is moved by that public rehearsal flow.
+
+Production deployment requires commercial data and supplier licenses, authoritative operational feeds, airline authorization, PSP/off-ramp agreements, KYC/KYB and AML controls, privacy governance, idempotent job processing, reconciliation, observability and security review.
