@@ -50,6 +50,13 @@
             <label>Origin airport<input name="origin" value="GRU" minlength="3" maxlength="3" required /></label>
             <label>Destination airport<input name="destinationAirport" value="LIS" minlength="3" maxlength="3" required /></label>
           </div>
+          <div class="optional-flight-monitor">
+            <div><b>Flight to monitor</b><span class="field-optional">Optional</span><small>Use this when the ticket was already purchased. Accepts IATA (AD2991) or ICAO (AZU2991).</small></div>
+            <div class="split">
+              <label>Airline<input name="airline" placeholder="Azul" /></label>
+              <label>Flight number<input name="flightNumber" placeholder="AD2991 or AZU2991" autocomplete="off" /></label>
+            </div>
+          </div>
           <label>Destination city<input name="destination" value="Lisboa" required /></label>
           <label>Event website <span class="field-optional">Optional</span><div class="event-website-field"><input name="eventWebsite" type="url" placeholder="https://official-event-site.com" /><button id="check-event-site" type="button">Check website</button></div></label>
           <div id="event-site-status" class="event-site-status hidden" aria-live="polite"></div>

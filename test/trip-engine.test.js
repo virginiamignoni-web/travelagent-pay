@@ -392,6 +392,21 @@ test("retries Aviationstack without the premium date filter on a free plan", asy
   assert.equal(result.delayMinutes, 125);
 });
 
+test("queries Aviationstack with an ICAO flight number when supplied", async () => {
+  let requestedUrl = "";
+  const result = await verifyFlightStatus({
+    flight: { number: "AZU2991" },
+    token: "test-key",
+    fetchImpl: async (url) => {
+      requestedUrl = url;
+      return { ok: true, json: async () => ({ data: [{ flight_status: "active", flight: { iata: "AD2991", icao: "AZU2991" }, departure: { delay: 15 }, arrival: {} }] }) };
+    },
+  });
+  assert.match(requestedUrl, /flight_icao=AZU2991/);
+  assert.equal(result.verified, true);
+  assert.equal(result.flightNumber, "AD2991");
+});
+
 test("redeems a voucher through the Brazil Pix sandbox once and blocks duplicate redemption", async () => {
   const session = createProtectionSession({ primaryFlight: { airline: "Demo Air" } });
   const issued = recordProtectionEvent({ sessionId: session.sessionId, event: "delayed_120" });

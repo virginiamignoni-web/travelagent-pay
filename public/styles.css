@@ -637,3 +637,9 @@ main small { font-size: 12px !important; line-height: 1.5; }
   .center-voucher { padding: 17px; }
   .center-voucher-facts span { grid-template-columns: 1fr; gap: 3px; }
 }
+.optional-flight-monitor { margin-top: 20px; padding: 15px; border: 1px solid #FDB913; border-radius: 12px; background: #fff9e8; }
+.optional-flight-monitor > div:first-child { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 9px; }
+.optional-flight-monitor > div:first-child b { font: 800 14px/1.2 "Poppins",sans-serif; }
+.optional-flight-monitor > div:first-child small { grid-column: 1/-1; color: #52677d; font-size: 12px !important; }
+.optional-flight-monitor label { margin-top: 12px; font-size: 13px; }
+@media(max-width:520px) { .optional-flight-monitor .split { grid-template-columns: 1fr; } }

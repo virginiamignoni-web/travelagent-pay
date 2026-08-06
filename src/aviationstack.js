@@ -33,7 +33,9 @@ export async function verifyFlightStatus({ flight = {}, reportedDelayMinutes = 0
   if (!token) return { verified: false, status: "configuration_pending", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: "External flight verification is not configured" };
   const flightNumber = String(flight.number || "").replace(/\s/g, "");
   if (!flightNumber) return { verified: false, status: "flight_reference_pending", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: "The trip has no flight number to verify" };
-  const params = new URLSearchParams({ access_key: token, flight_iata: flightNumber, limit: "10" });
+  const usesIcao = /^[A-Z]{3}\d/i.test(flightNumber);
+  const flightFilter = usesIcao ? "flight_icao" : "flight_iata";
+  const params = new URLSearchParams({ access_key: token, [flightFilter]: flightNumber, limit: "10" });
   if (flight.departureAt) params.set("flight_date", String(flight.departureAt).slice(0, 10));
   try {
     let response = await fetchImpl(`${API_URL}?${params}`, { signal: AbortSignal.timeout(10000) });
@@ -45,7 +47,7 @@ export async function verifyFlightStatus({ flight = {}, reportedDelayMinutes = 0
       payload = await response.json();
     }
     if (!response.ok || payload.error) return { verified: false, status: "provider_error", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: "The external source could not query this flight at this time" };
-    const exact = (payload.data || []).find((item) => String(item.flight?.iata || "").replace(/\s/g, "").toUpperCase() === flightNumber.toUpperCase()) || payload.data?.[0];
+    const exact = (payload.data || []).find((item) => [item.flight?.iata, item.flight?.icao].some((reference) => String(reference || "").replace(/\s/g, "").toUpperCase() === flightNumber.toUpperCase())) || payload.data?.[0];
     return { ...summarizeFlightVerification(exact, reportedDelayMinutes), checkedAt };
   } catch (error) {
     return { verified: false, status: "temporarily_unavailable", reportedDelayMinutes, checkedAt, source: "Aviationstack", reason: error.message };

@@ -126,7 +126,12 @@ app.post("/api/reservations", (req, res, next) => {
     if (!req.body.acceptedTerms) throw Object.assign(new Error("Explicit traveler confirmation is required"), { statusCode: 400 });
     const travelerWallet = req.body.travelerWallet || req.header("x-traveler-wallet") || null;
     const reservation = createReservation({ ...req.body, travelerWallet });
-    const primaryFlight = reservation.flight || req.body.plan?.decision?.primaryFlight;
+    const selectedFlight = reservation.flight || req.body.plan?.decision?.primaryFlight;
+    const requestedFlightNumber = String(req.body.input?.flightNumber || "").trim().toUpperCase() || null;
+    const requestedAirline = String(req.body.input?.airline || "").trim() || null;
+    const primaryFlight = requestedFlightNumber
+      ? { ...(selectedFlight || {}), flightNumber: requestedFlightNumber, airline: requestedAirline || selectedFlight?.airline || "Airline pending", departureAt: req.body.input?.departureDate ? `${req.body.input.departureDate}T00:00:00.000Z` : selectedFlight?.departureAt }
+      : selectedFlight;
     const sessionInput = { ...req.body.input, bookingReference: reservation.supplierReferences?.pnr || null, internalReference: reservation.internalReference, travelerWallet, linkedServices: linkedServicesForReservation(reservation) };
     reservation.pendingActivation = { sessionInput, contingencyPlan: req.body.plan?.contingencyPlan, decision: req.body.plan?.decision, primaryFlight };
     return res.status(201).json(saveReservation(reservation));
