@@ -11,7 +11,7 @@ The passenger sees planning, bookings, active trips, protection and a voucher wa
 
 **Public demo:** https://bit-travels-concierge.onrender.com
 
-The public deployment runs in the clearly labeled local rehearsal mode and intentionally contains no supplier or wallet secrets. Verifiable Testnet executions are documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
+The public deployment runs in the clearly labeled local rehearsal mode and intentionally contains no supplier or wallet secrets. When no voucher treasury is configured, disruption assistance remains demonstrable but the new voucher is explicitly shown as awaiting Testnet funding. Verifiable funded Testnet executions are documented in [`LIVE_TESTNET_PROOF.md`](./LIVE_TESTNET_PROOF.md).
 
 ## Judge in 60 seconds
 

@@ -200,6 +200,10 @@ app.post("/api/travel-protection/cases", (req, res, next) => {
 
 async function settleProtectionVouchers(protection) {
   let current = protection;
+  // The public rehearsal intentionally runs without treasury secrets. Keep the
+  // assistance case usable and truthfully expose the voucher as unfunded
+  // instead of failing the entire disruption demonstration.
+  if (!voucherSettlementService.enabled) return current;
   for (const voucher of current.vouchers || []) {
     if (voucher.settlement?.transactionHash) continue;
     const settlement = await voucherSettlementService.settle(voucher);

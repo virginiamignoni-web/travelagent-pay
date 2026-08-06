@@ -65,4 +65,4 @@ Use disposable Testnet accounts only.
 3. Accept the versioned Travel Protection consent and activate the case.
 4. Confirm the screen labels the trip as `EXTERNAL` and exposes its validation state.
 5. Run the transparent two-hour delay scenario.
-6. Confirm the same Stellar-funded assistance and Pix delivery flow works without a BIT Travels reservation.
+6. Confirm the same assistance lifecycle works without a BIT Travels reservation. In the secret-free public rehearsal, the voucher remains clearly marked as awaiting Testnet funding; use the documented Testnet proof for the funded path.
